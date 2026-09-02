@@ -612,14 +612,47 @@
   }
 
   // ---------- History (localStorage, this is a standalone site the user hosts themselves) ----------
+  const TYPE_FIELD_IDS = {
+    text: ['text-input'],
+    wifi: ['wifi-ssid', 'wifi-password', 'wifi-encryption'],
+    vcard: ['vcard-name', 'vcard-phone', 'vcard-email', 'vcard-org'],
+    email: ['email-address', 'email-subject', 'email-body'],
+    phone: ['phone-number']
+  };
+
+  function snapshotFields(type) {
+    const ids = TYPE_FIELD_IDS[type] || [];
+    const values = {};
+    ids.forEach(id => { values[id] = document.getElementById(id).value; });
+    return values;
+  }
+
+  function restoreFields(type, values) {
+    const ids = TYPE_FIELD_IDS[type] || [];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && values[id] !== undefined) el.value = values[id];
+    });
+  }
+
+  function labelForHistory(type, values) {
+    if (type === 'wifi') return `Wi-Fi: ${values['wifi-ssid'] || ''}`;
+    if (type === 'vcard') return `Contact: ${values['vcard-name'] || ''}`;
+    if (type === 'email') return `Email: ${values['email-address'] || ''}`;
+    if (type === 'phone') return `Phone: ${values['phone-number'] || ''}`;
+    return values['text-input'] || '';
+  }
+
   function saveToHistory(text) {
     const canvas = getCurrentCanvas();
     if (!canvas) return;
+    const type = typeSelect.value;
+    const values = snapshotFields(type);
     let history = [];
     try { history = JSON.parse(localStorage.getItem('qr_history') || '[]'); } catch (e) { history = []; }
     const thumb = canvas.toDataURL('image/png');
     history = history.filter(h => h.text !== text);
-    history.unshift({ text, thumb, ts: Date.now() });
+    history.unshift({ text, thumb, ts: Date.now(), type, values, label: labelForHistory(type, values) });
     history = history.slice(0, 8);
     localStorage.setItem('qr_history', JSON.stringify(history));
     renderHistory();
@@ -633,15 +666,28 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'history-item';
-      btn.title = h.text;
+      btn.title = h.label || h.text;
       const img = document.createElement('img');
       img.src = h.thumb;
       btn.appendChild(img);
       btn.addEventListener('click', () => {
-        typeSelect.value = 'text';
+        const type = h.type || 'text';
+        typeSelect.value = type;
         document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
-        document.getElementById('fields-text').classList.add('active');
-        textInput.value = h.text;
+        document.getElementById('fields-' + type).classList.add('active');
+
+        if (batchModeCheckbox.checked) {
+          batchModeCheckbox.checked = false;
+          singleTextField.style.display = 'block';
+          batchTextField.style.display = 'none';
+        }
+
+        if (h.values) {
+          restoreFields(type, h.values);
+        } else {
+          textInput.value = h.text;
+        }
+        setOutputVisible(true);
         generateQR();
       });
       historyRow.appendChild(btn);
@@ -701,7 +747,6 @@
     const size = parseInt(sizeSelect.value, 10);
     const color = colorInput.value;
     const bgColor = bgColorInput.value;
-
     const offscreen = document.createElement('div');
     offscreen.style.position = 'absolute';
     offscreen.style.left = '-9999px';
