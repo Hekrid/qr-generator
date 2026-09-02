@@ -259,6 +259,9 @@
   <div class="btn-row">
     <button class="secondary" id="copy-btn">Copy to clipboard</button>
   </div>
+  <div class="btn-row">
+    <button class="secondary" id="save-history-btn">Save to recent</button>
+  </div>
 
   <label style="margin-top:16px;">Recent codes</label>
   <div class="history-row" id="history-row"></div>
@@ -424,12 +427,9 @@
         drawBackground(size, bgColor, myToken, () => {
           if (myToken !== renderToken) return;
           if (logoDataUrl) drawLogo(size, bgColor);
-          else saveToHistory(text);
         });
       } else if (logoDataUrl) {
-        drawLogo(size, bgColor, () => saveToHistory(text));
-      } else {
-        saveToHistory(text);
+        drawLogo(size, bgColor);
       }
     }, 60);
   }
@@ -556,6 +556,7 @@
     else if (img) link.href = img.src;
     else return;
     link.click();
+    saveToHistory(buildPayload());
   }
 
   function downloadSVG() {
@@ -590,6 +591,7 @@
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);
+    saveToHistory(buildPayload());
   }
 
   function copyToClipboard() {
@@ -599,7 +601,7 @@
       if (!blob) { showToast('Copy failed'); return; }
       if (navigator.clipboard && window.ClipboardItem) {
         navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-          .then(() => showToast('Copied to clipboard'))
+          .then(() => { showToast('Copied to clipboard'); saveToHistory(buildPayload()); })
           .catch(() => showToast('Copy failed — try downloading instead'));
       } else {
         showToast('Clipboard not supported in this browser');
@@ -756,6 +758,10 @@
   document.getElementById('download-btn').addEventListener('click', downloadQR);
   document.getElementById('download-svg-btn').addEventListener('click', downloadSVG);
   document.getElementById('copy-btn').addEventListener('click', copyToClipboard);
+  document.getElementById('save-history-btn').addEventListener('click', () => {
+    saveToHistory(buildPayload());
+    showToast('Saved to recent codes');
+  });
 
   textInput.addEventListener('input', generateQR);
   sizeSelect.addEventListener('change', generateQR);
