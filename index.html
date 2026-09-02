@@ -321,7 +321,6 @@
   typeSelect.addEventListener('change', () => {
     document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
     document.getElementById('fields-' + typeSelect.value).classList.add('active');
-    // Batch mode only makes sense for the URL/text type — reset it when leaving
     if (typeSelect.value !== 'text' && batchModeCheckbox.checked) {
       batchModeCheckbox.checked = false;
       singleTextField.style.display = 'block';
@@ -560,9 +559,6 @@
   }
 
   function downloadSVG() {
-    // Rebuild a true vector SVG from qrcode.js's internal module matrix,
-    // so it stays sharp at any print size (logo/background overlays are
-    // raster-only, so this exports the plain pattern).
     if (!qr || !qr._oQRCode) {
       showToast('SVG export unavailable for this code');
       return;
@@ -706,8 +702,6 @@
     const color = colorInput.value;
     const bgColor = bgColorInput.value;
 
-    // Render each code in a hidden offscreen container, one at a time,
-    // reusing the same simple (no logo/background) rendering path.
     const offscreen = document.createElement('div');
     offscreen.style.position = 'absolute';
     offscreen.style.left = '-9999px';
