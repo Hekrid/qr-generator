@@ -18,8 +18,8 @@
 <meta name="twitter:title" content="Free QR code generator — no ads, no tracking">
 <meta name="twitter:description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no account, no tracking.">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -121,6 +121,7 @@
     <option value="vcard">Contact card</option>
     <option value="email">Email</option>
     <option value="phone">Phone number</option>
+    <option value="dynamic">Dynamic link (editable later)</option>
   </select>
 
   <div class="type-fields active" id="fields-text" style="margin-top:12px;">
@@ -181,6 +182,22 @@
     <label for="phone-number">Phone number</label>
     <input type="text" id="phone-number" placeholder="+1 555 000 0000">
     <div class="field-error" id="phone-number-error">Enter a phone number (digits only, optional +).</div>
+  </div>
+
+  <div class="type-fields" id="fields-dynamic" style="margin-top:12px;">
+    <label for="worker-url-input">Backend URL (one-time setup)</label>
+    <input type="text" id="worker-url-input" placeholder="https://your-worker.workers.dev">
+    <div class="field-error" id="worker-url-error">Set your deployed backend URL first — see the Deploy guide.</div>
+
+    <label for="dynamic-destination" style="margin-top:10px;">Destination URL</label>
+    <input type="text" id="dynamic-destination" placeholder="https://example.com">
+    <div class="field-error" id="dynamic-destination-error">Enter a valid http(s) URL.</div>
+
+    <button type="button" id="dynamic-create-btn" style="margin-top:10px;">Create dynamic link</button>
+    <div id="dynamic-result" style="display:none; margin-top:10px; font-size:13px; color:#333; background:#f7f7f7; border-radius:8px; padding:10px;"></div>
+
+    <label style="margin-top:16px;">Your dynamic links</label>
+    <div id="dynamic-list" style="font-size:13px;"></div>
   </div>
 
   <div class="row">
@@ -245,6 +262,42 @@
       <button type="button" class="swatch" data-pattern="#1b4d3e" data-bg="#f2ede1" style="background:linear-gradient(135deg,#1b4d3e 50%,#f2ede1 50%);" title="Forest / cream"></button>
       <button type="button" class="swatch" data-pattern="#5c2a3a" data-bg="#fbeff2" style="background:linear-gradient(135deg,#5c2a3a 50%,#fbeff2 50%);" title="Burgundy / blush"></button>
       <button type="button" class="swatch" data-pattern="#2c2c2a" data-bg="#f1efe8" style="background:linear-gradient(135deg,#2c2c2a 50%,#f1efe8 50%);" title="Charcoal / bone"></button>
+    </div>
+
+    <label style="margin-top:14px;">Pattern style</label>
+    <div class="row">
+      <div>
+        <select id="dot-style-select">
+          <option value="square">Square</option>
+          <option value="dots" selected>Dots</option>
+          <option value="rounded">Rounded</option>
+          <option value="classy">Classy</option>
+          <option value="classy-rounded">Classy rounded</option>
+          <option value="extra-rounded">Extra rounded</option>
+        </select>
+      </div>
+      <div>
+        <select id="corner-style-select">
+          <option value="square">Square corners</option>
+          <option value="dot">Dot corners</option>
+          <option value="extra-rounded" selected>Rounded corners</option>
+        </select>
+      </div>
+    </div>
+
+    <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
+      <input type="checkbox" id="gradient-toggle" style="width:auto;">
+      Use gradient instead of solid pattern color
+    </label>
+    <div class="row" id="gradient-colors" style="display:none;">
+      <div>
+        <label for="gradient-color-1">Gradient start</label>
+        <input type="color" id="gradient-color-1" value="#6a11cb">
+      </div>
+      <div>
+        <label for="gradient-color-2">Gradient end</label>
+        <input type="color" id="gradient-color-2" value="#2575fc">
+      </div>
     </div>
   </div>
 
@@ -321,13 +374,16 @@
   typeSelect.addEventListener('change', () => {
     document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
     document.getElementById('fields-' + typeSelect.value).classList.add('active');
+    // Batch mode only makes sense for the URL/text type — reset it when leaving
     if (typeSelect.value !== 'text' && batchModeCheckbox.checked) {
       batchModeCheckbox.checked = false;
       singleTextField.style.display = 'block';
       batchTextField.style.display = 'none';
     }
-    setOutputVisible(!(typeSelect.value === 'text' && batchModeCheckbox.checked));
-    generateQR();
+    const hideOutput = (typeSelect.value === 'text' && batchModeCheckbox.checked)
+      || (typeSelect.value === 'dynamic' && !currentDynamicUrl);
+    setOutputVisible(!hideOutput);
+    if (typeSelect.value !== 'dynamic' || currentDynamicUrl) generateQR();
   });
 
   function setFieldError(inputId, errorId, isInvalid) {
@@ -383,8 +439,141 @@
       setFieldError('phone-number', 'phone-number-error', num.length > 0 && !validPhone);
       return `tel:${num}`;
     }
+    if (type === 'dynamic') {
+      return currentDynamicUrl || '';
+    }
     return textInput.value.trim() || 'https://example.com';
   }
+
+  // ---------- Dynamic links (needs the Cloudflare Worker backend) ----------
+  let currentDynamicUrl = null;
+  const workerUrlInput = document.getElementById('worker-url-input');
+  const dynamicDestInput = document.getElementById('dynamic-destination');
+  const dynamicCreateBtn = document.getElementById('dynamic-create-btn');
+  const dynamicResult = document.getElementById('dynamic-result');
+  const dynamicList = document.getElementById('dynamic-list');
+
+  // Restore saved backend URL
+  workerUrlInput.value = localStorage.getItem('qr_worker_url') || '';
+  workerUrlInput.addEventListener('change', () => {
+    localStorage.setItem('qr_worker_url', workerUrlInput.value.trim());
+  });
+
+  function getSavedDynamicLinks() {
+    try { return JSON.parse(localStorage.getItem('qr_dynamic_links') || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function saveDynamicLinks(links) {
+    localStorage.setItem('qr_dynamic_links', JSON.stringify(links));
+  }
+
+  async function createDynamicLink() {
+    const workerUrl = workerUrlInput.value.trim().replace(/\/$/, '');
+    const destination = dynamicDestInput.value.trim();
+    const validUrl = /^https?:\/\/.+/.test(destination);
+
+    setFieldError('worker-url-input', 'worker-url-error', workerUrl.length === 0);
+    setFieldError('dynamic-destination', 'dynamic-destination-error', !validUrl);
+    if (!workerUrl || !validUrl) return;
+
+    dynamicCreateBtn.disabled = true;
+    dynamicCreateBtn.textContent = 'Creating…';
+    try {
+      const res = await fetch(`${workerUrl}/api/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ destination })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create link');
+
+      currentDynamicUrl = data.url;
+      const links = getSavedDynamicLinks();
+      links.unshift({ code: data.code, token: data.token, url: data.url, destination, created: Date.now() });
+      saveDynamicLinks(links);
+      renderDynamicList(workerUrl);
+
+      dynamicResult.style.display = 'block';
+      dynamicResult.textContent = `Created: ${data.url}`;
+      setOutputVisible(true);
+      generateQR();
+    } catch (err) {
+      showToast(err.message || 'Could not reach backend — check the URL');
+    }
+    dynamicCreateBtn.disabled = false;
+    dynamicCreateBtn.textContent = 'Create dynamic link';
+  }
+
+  function renderDynamicList(workerUrl) {
+    const links = getSavedDynamicLinks();
+    dynamicList.innerHTML = '';
+    if (links.length === 0) {
+      dynamicList.innerHTML = '<span style="color:#999;">No dynamic links yet.</span>';
+      return;
+    }
+    links.forEach(link => {
+      const row = document.createElement('div');
+      row.style.cssText = 'border:1px solid #eee; border-radius:8px; padding:8px; margin-top:6px;';
+
+      const urlLine = document.createElement('div');
+      urlLine.textContent = link.url;
+      urlLine.style.fontWeight = '600';
+      row.appendChild(urlLine);
+
+      const destInput = document.createElement('input');
+      destInput.type = 'text';
+      destInput.value = link.destination;
+      destInput.style.marginTop = '6px';
+      row.appendChild(destInput);
+
+      const btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex; gap:6px; margin-top:6px;';
+
+      const useBtn = document.createElement('button');
+      useBtn.type = 'button';
+      useBtn.textContent = 'Use this code';
+      useBtn.className = 'secondary';
+      useBtn.style.cssText = 'width:auto; padding:6px 10px; margin-top:0;';
+      useBtn.addEventListener('click', () => {
+        currentDynamicUrl = link.url;
+        setOutputVisible(true);
+        generateQR();
+      });
+
+      const updateBtn = document.createElement('button');
+      updateBtn.type = 'button';
+      updateBtn.textContent = 'Save new destination';
+      updateBtn.className = 'secondary';
+      updateBtn.style.cssText = 'width:auto; padding:6px 10px; margin-top:0;';
+      updateBtn.addEventListener('click', async () => {
+        const newDest = destInput.value.trim();
+        if (!/^https?:\/\/.+/.test(newDest)) { showToast('Enter a valid http(s) URL'); return; }
+        try {
+          const res = await fetch(`${workerUrl}/api/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: link.code, token: link.token, destination: newDest })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Update failed');
+          link.destination = newDest;
+          saveDynamicLinks(links);
+          showToast('Destination updated');
+        } catch (err) {
+          showToast(err.message || 'Could not update');
+        }
+      });
+
+      btnRow.appendChild(useBtn);
+      btnRow.appendChild(updateBtn);
+      row.appendChild(btnRow);
+      dynamicList.appendChild(row);
+    });
+  }
+
+  dynamicCreateBtn.addEventListener('click', createDynamicLink);
+  renderDynamicList(workerUrlInput.value.trim().replace(/\/$/, ''));
 
   // ---------- Advanced toggle ----------
   advancedToggle.addEventListener('click', () => {
@@ -410,15 +599,37 @@
     const size = parseInt(sizeSelect.value, 10);
     const color = colorInput.value;
     const bgColor = bgColorInput.value;
+    const dotType = document.getElementById('dot-style-select').value;
+    const cornerType = document.getElementById('corner-style-select').value;
+    const useGradient = document.getElementById('gradient-toggle').checked;
 
-    qr = new QRCode(qrContainer, {
-      text: text,
+    const dotsOptions = { type: dotType };
+    if (useGradient) {
+      dotsOptions.gradient = {
+        type: 'linear',
+        rotation: Math.PI / 4,
+        colorStops: [
+          { offset: 0, color: document.getElementById('gradient-color-1').value },
+          { offset: 1, color: document.getElementById('gradient-color-2').value }
+        ]
+      };
+    } else {
+      dotsOptions.color = color;
+    }
+
+    qr = new QRCodeStyling({
       width: size,
       height: size,
-      colorDark: color,
-      colorLight: bgImageDataUrl ? '#ffffff' : bgColor,
-      correctLevel: QRCode.CorrectLevel.H
+      type: 'canvas',
+      data: text,
+      margin: 0,
+      qrOptions: { errorCorrectionLevel: 'H' },
+      dotsOptions: dotsOptions,
+      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, color: color },
+      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', color: color },
+      backgroundOptions: { color: bgImageDataUrl ? '#ffffff' : bgColor }
     });
+    qr.append(qrContainer);
 
     setTimeout(() => {
       if (myToken !== renderToken) return;
@@ -559,34 +770,47 @@
   }
 
   function downloadSVG() {
-    if (!qr || !qr._oQRCode) {
+    // Render a fresh vector copy via the styling library's own SVG mode,
+    // so dot shape/corners/gradient carry over correctly. Logo/background
+    // image overlays are raster-only compositing, so they aren't included.
+    if (!qr) {
       showToast('SVG export unavailable for this code');
       return;
     }
-    const modules = qr._oQRCode.modules;
-    const count = qr._oQRCode.moduleCount;
     const size = parseInt(sizeSelect.value, 10);
-    const cell = size / count;
-    const dark = colorInput.value;
-    const bg = bgColorInput.value;
+    const color = colorInput.value;
+    const bgColor = bgColorInput.value;
+    const dotType = document.getElementById('dot-style-select').value;
+    const cornerType = document.getElementById('corner-style-select').value;
+    const useGradient = document.getElementById('gradient-toggle').checked;
 
-    let rects = '';
-    for (let r = 0; r < count; r++) {
-      for (let c = 0; c < count; c++) {
-        if (modules[r][c]) {
-          rects += `<rect x="${(c * cell).toFixed(2)}" y="${(r * cell).toFixed(2)}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}" fill="${dark}"/>`;
-        }
-      }
+    const dotsOptions = { type: dotType };
+    if (useGradient) {
+      dotsOptions.gradient = {
+        type: 'linear',
+        rotation: Math.PI / 4,
+        colorStops: [
+          { offset: 0, color: document.getElementById('gradient-color-1').value },
+          { offset: 1, color: document.getElementById('gradient-color-2').value }
+        ]
+      };
+    } else {
+      dotsOptions.color = color;
     }
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><rect width="${size}" height="${size}" fill="${bg}"/>${rects}</svg>`;
 
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = 'qrcode.svg';
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
+    const svgQr = new QRCodeStyling({
+      width: size,
+      height: size,
+      type: 'svg',
+      data: buildPayload(),
+      margin: 0,
+      qrOptions: { errorCorrectionLevel: 'H' },
+      dotsOptions: dotsOptions,
+      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, color: color },
+      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', color: color },
+      backgroundOptions: { color: bgColor }
+    });
+    svgQr.download({ name: 'qrcode', extension: 'svg' });
     saveToHistory(buildPayload());
   }
 
@@ -671,6 +895,8 @@
       img.src = h.thumb;
       btn.appendChild(img);
       btn.addEventListener('click', () => {
+        // Older saved entries (before this fix) only have raw text — fall
+        // back to loading them into the plain URL/text field.
         const type = h.type || 'text';
         typeSelect.value = type;
         document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
@@ -747,6 +973,25 @@
     const size = parseInt(sizeSelect.value, 10);
     const color = colorInput.value;
     const bgColor = bgColorInput.value;
+    const dotType = document.getElementById('dot-style-select').value;
+    const cornerType = document.getElementById('corner-style-select').value;
+    const useGradient = document.getElementById('gradient-toggle').checked;
+    const dotsOptions = { type: dotType };
+    if (useGradient) {
+      dotsOptions.gradient = {
+        type: 'linear',
+        rotation: Math.PI / 4,
+        colorStops: [
+          { offset: 0, color: document.getElementById('gradient-color-1').value },
+          { offset: 1, color: document.getElementById('gradient-color-2').value }
+        ]
+      };
+    } else {
+      dotsOptions.color = color;
+    }
+
+    // Render each code in a hidden offscreen container, one at a time,
+    // reusing the same simple (no logo/background) rendering path.
     const offscreen = document.createElement('div');
     offscreen.style.position = 'absolute';
     offscreen.style.left = '-9999px';
@@ -754,14 +999,18 @@
 
     for (let i = 0; i < lines.length; i++) {
       offscreen.innerHTML = '';
-      new QRCode(offscreen, {
-        text: lines[i],
+      new QRCodeStyling({
         width: size,
         height: size,
-        colorDark: color,
-        colorLight: bgColor,
-        correctLevel: QRCode.CorrectLevel.H
-      });
+        type: 'canvas',
+        data: lines[i],
+        margin: 0,
+        qrOptions: { errorCorrectionLevel: 'H' },
+        dotsOptions: dotsOptions,
+        cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, color: color },
+        cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', color: color },
+        backgroundOptions: { color: bgColor }
+      }).append(offscreen);
       await new Promise(res => setTimeout(res, 60));
       const canvas = offscreen.querySelector('canvas');
       if (canvas) {
@@ -807,6 +1056,14 @@
   colorInput.addEventListener('input', generateQR);
   bgColorInput.addEventListener('input', generateQR);
   logoBgToggle.addEventListener('change', generateQR);
+  document.getElementById('dot-style-select').addEventListener('change', generateQR);
+  document.getElementById('corner-style-select').addEventListener('change', generateQR);
+  document.getElementById('gradient-color-1').addEventListener('input', generateQR);
+  document.getElementById('gradient-color-2').addEventListener('input', generateQR);
+  document.getElementById('gradient-toggle').addEventListener('change', (e) => {
+    document.getElementById('gradient-colors').style.display = e.target.checked ? 'flex' : 'none';
+    generateQR();
+  });
   logoRoundToggle.addEventListener('change', generateQR);
 
   ['wifi-ssid','wifi-password','wifi-encryption','vcard-name','vcard-phone','vcard-email','vcard-org',
