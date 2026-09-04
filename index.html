@@ -185,8 +185,10 @@
   </div>
 
   <div class="type-fields" id="fields-dynamic" style="margin-top:12px;">
-    <label for="worker-url-input">Backend URL (one-time setup)</label>
-    <input type="text" id="worker-url-input" placeholder="https://your-worker.workers.dev">
+    <div id="worker-url-field" style="display:none;">
+      <label for="worker-url-input">Backend URL (one-time setup)</label>
+      <input type="text" id="worker-url-input" placeholder="https://your-worker.workers.dev">
+    </div>
     <div class="field-error" id="worker-url-error">Set your deployed backend URL first — see the Deploy guide.</div>
 
     <label for="dynamic-destination" style="margin-top:10px;">Destination URL</label>
@@ -446,6 +448,10 @@
   }
 
   // ---------- Dynamic links (needs the Cloudflare Worker backend) ----------
+  // This is the site owner's own deployed backend — shared by every visitor.
+  // It is NOT something regular users need to set up themselves.
+  const DEFAULT_WORKER_URL = 'https://qr-dynamic-links.the-hekrid.workers.dev';
+
   let currentDynamicUrl = null;
   const workerUrlInput = document.getElementById('worker-url-input');
   const dynamicDestInput = document.getElementById('dynamic-destination');
@@ -453,8 +459,9 @@
   const dynamicResult = document.getElementById('dynamic-result');
   const dynamicList = document.getElementById('dynamic-list');
 
-  // Restore saved backend URL
-  workerUrlInput.value = localStorage.getItem('qr_worker_url') || '';
+  // Use the built-in backend by default; only fall back to a locally saved
+  // override if someone has deliberately set one (e.g. for local testing).
+  workerUrlInput.value = localStorage.getItem('qr_worker_url') || DEFAULT_WORKER_URL;
   workerUrlInput.addEventListener('change', () => {
     localStorage.setItem('qr_worker_url', workerUrlInput.value.trim());
   });
