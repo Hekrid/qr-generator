@@ -75,7 +75,7 @@
     body { padding: 16px 8px; align-items: stretch; }
     .card { padding: 20px 16px; border-radius: 12px; max-width: 100%; }
     h1 { font-size: 19px; }
-    /* 16px avoids iOS auto-zoom on focus */
+    
     textarea, input[type="text"], select { font-size: 16px; }
     .row { flex-direction: column; gap: 10px; }
     .btn-row { flex-direction: column; }
@@ -103,18 +103,63 @@
     font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none;
   }
   .toast.show { opacity: 1; }
+
+  .step-label {
+    display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700;
+    color: #1a1a1a; margin: 22px 0 10px;
+  }
+  .step-label .num {
+    width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; color: #fff;
+    font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .layout { display: flex; gap: 28px; align-items: flex-start; margin-top: 10px; }
+  .form-col { flex: 1; min-width: 0; }
+  .preview-col {
+    width: 300px; flex-shrink: 0; position: sticky; top: 20px;
+    border: 1px solid #eee; border-radius: 14px; padding: 18px; background: #fafafa;
+  }
+  .type-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .type-chip {
+    border: 1px solid #ddd; background: #fff; border-radius: 8px; padding: 8px 12px;
+    font-size: 13px; cursor: pointer; color: #333; width: auto; margin-top: 0;
+  }
+  .type-chip:hover { background: #f5f5f5; }
+  .type-chip.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
+  #type-select { display: none; }
+
+  .design-tabs { display: flex; gap: 6px; border-bottom: 1px solid #eee; margin-top: 4px; }
+  .design-tab {
+    background: none; border: none; padding: 8px 4px; font-size: 13px; font-weight: 600;
+    color: #888; cursor: pointer; width: auto; margin-top: 0; border-bottom: 2px solid transparent;
+  }
+  .design-tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+  .design-tab-panel { display: none; padding-top: 14px; }
+  .design-tab-panel.active { display: block; }
+
+  @media (max-width: 760px) {
+    .layout { flex-direction: column; }
+    .preview-col { width: 100%; position: static; }
+  }
 </style>
 </head>
 <body>
 
-<div class="card">
+<div class="card" style="max-width: 780px;">
   <h1>QR code generator</h1>
   <p class="subtitle">No ads. No account. No tracking.</p>
   <p style="font-size:13px; color:#888; text-align:center; margin:-14px 0 20px; line-height:1.5;">
     Make QR codes for links, Wi-Fi, contacts, email, or phone numbers. Add a logo or background image if you want. Download as PNG or SVG. Everything runs in your browser — nothing is uploaded anywhere.
   </p>
 
-  <label for="type-select">QR type</label>
+  <div class="step-label"><span class="num">1</span> Choose a type</div>
+  <div class="type-chip-row" id="type-chip-row">
+    <button type="button" class="type-chip active" data-type="text">Link / text</button>
+    <button type="button" class="type-chip" data-type="wifi">Wi-Fi</button>
+    <button type="button" class="type-chip" data-type="vcard">Contact card</button>
+    <button type="button" class="type-chip" data-type="email">Email</button>
+    <button type="button" class="type-chip" data-type="phone">Phone</button>
+    <button type="button" class="type-chip" data-type="dynamic">Dynamic link</button>
+  </div>
   <select id="type-select">
     <option value="text" selected>URL / text</option>
     <option value="wifi">Wi-Fi</option>
@@ -123,6 +168,11 @@
     <option value="phone">Phone number</option>
     <option value="dynamic">Dynamic link (editable later)</option>
   </select>
+
+  <div class="layout">
+  <div class="form-col">
+
+  <div class="step-label"><span class="num">2</span> Enter content &amp; design</div>
 
   <div class="type-fields active" id="fields-text" style="margin-top:12px;">
     <div id="batch-mode-box" style="display:flex; align-items:center; gap:8px; border:1px solid #ddd; border-radius:8px; padding:8px 12px; cursor:pointer; margin-bottom:10px; user-select:none;">
@@ -213,60 +263,18 @@
     </div>
   </div>
 
-  <button type="button" class="secondary" id="advanced-toggle" style="margin-top:14px;">Advanced options ▾</button>
+  <div class="step-label" style="margin-top:18px;">Design</div>
+  <div class="design-tabs" id="design-tabs">
+    <button type="button" class="design-tab active" data-tab="shape">Shape</button>
+    <button type="button" class="design-tab" data-tab="colors">Colors</button>
+    <button type="button" class="design-tab" data-tab="logo">Logo</button>
+    <button type="button" class="design-tab" data-tab="background">Background</button>
+  </div>
 
-  <div id="advanced-panel" style="display:none; margin-top:14px; border-top:1px solid #eee; padding-top:14px;">
-    <label for="logo-input">Center logo (optional)</label>
-    <div style="display:flex; gap:8px;">
-      <input type="file" id="logo-input" accept="image/*" style="flex:1;">
-      <button type="button" class="secondary" id="logo-remove-btn" style="width:auto; padding:8px 12px; margin-top:0;">Remove</button>
-    </div>
+  <div id="design-panel">
 
-    <label for="bg-image-input" style="margin-top:10px;">Background image (optional)</label>
-    <div style="display:flex; gap:8px;">
-      <input type="file" id="bg-image-input" accept="image/*" style="flex:1;">
-      <button type="button" class="secondary" id="bg-image-remove-btn" style="width:auto; padding:8px 12px; margin-top:0;">Remove</button>
-    </div>
-
-    <label for="wash-slider" style="margin-top:10px;">Background fade (higher = more scannable)</label>
-    <input type="range" id="wash-slider" min="30" max="90" value="65" style="width:100%;">
-
-    <div class="row">
-      <div>
-        <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
-          <input type="checkbox" id="logo-bg-toggle" checked style="width:auto;">
-          Logo background
-        </label>
-      </div>
-      <div>
-        <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
-          <input type="checkbox" id="logo-round-toggle" checked style="width:auto;">
-          Logo round
-        </label>
-      </div>
-    </div>
-
-    <div class="row">
-      <div>
-        <label for="color-input">Pattern color</label>
-        <input type="color" id="color-input" value="#000000">
-      </div>
-      <div>
-        <label for="bg-color-input">Background color</label>
-        <input type="color" id="bg-color-input" value="#ffffff">
-      </div>
-    </div>
-
-    <label style="margin-top:10px;">Quick color pairs</label>
-    <div class="swatch-row" id="preset-row">
-      <button type="button" class="swatch" data-pattern="#000000" data-bg="#ffffff" style="background:linear-gradient(135deg,#000 50%,#fff 50%);" title="Black / white"></button>
-      <button type="button" class="swatch" data-pattern="#0c3c60" data-bg="#eaf3fb" style="background:linear-gradient(135deg,#0c3c60 50%,#eaf3fb 50%);" title="Navy / ice blue"></button>
-      <button type="button" class="swatch" data-pattern="#1b4d3e" data-bg="#f2ede1" style="background:linear-gradient(135deg,#1b4d3e 50%,#f2ede1 50%);" title="Forest / cream"></button>
-      <button type="button" class="swatch" data-pattern="#5c2a3a" data-bg="#fbeff2" style="background:linear-gradient(135deg,#5c2a3a 50%,#fbeff2 50%);" title="Burgundy / blush"></button>
-      <button type="button" class="swatch" data-pattern="#2c2c2a" data-bg="#f1efe8" style="background:linear-gradient(135deg,#2c2c2a 50%,#f1efe8 50%);" title="Charcoal / bone"></button>
-    </div>
-
-    <label style="margin-top:14px;">Pattern style</label>
+  <div class="design-tab-panel active" id="tab-shape">
+    <label style="margin-top:10px;">Pattern style</label>
     <div class="row">
       <div>
         <select id="dot-style-select">
@@ -286,8 +294,30 @@
         </select>
       </div>
     </div>
+  </div>
 
-    <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
+  <div class="design-tab-panel" id="tab-colors">
+    <div class="row" style="margin-top:0;">
+      <div>
+        <label for="color-input">Pattern color</label>
+        <input type="color" id="color-input" value="#000000">
+      </div>
+      <div>
+        <label for="bg-color-input">Background color</label>
+        <input type="color" id="bg-color-input" value="#ffffff">
+      </div>
+    </div>
+
+    <label style="margin-top:10px;">Quick color pairs</label>
+    <div class="swatch-row" id="preset-row">
+      <button type="button" class="swatch" data-pattern="#000000" data-bg="#ffffff" style="background:linear-gradient(135deg,#000 50%,#fff 50%);" title="Black / white"></button>
+      <button type="button" class="swatch" data-pattern="#0c3c60" data-bg="#eaf3fb" style="background:linear-gradient(135deg,#0c3c60 50%,#eaf3fb 50%);" title="Navy / ice blue"></button>
+      <button type="button" class="swatch" data-pattern="#1b4d3e" data-bg="#f2ede1" style="background:linear-gradient(135deg,#1b4d3e 50%,#f2ede1 50%);" title="Forest / cream"></button>
+      <button type="button" class="swatch" data-pattern="#5c2a3a" data-bg="#fbeff2" style="background:linear-gradient(135deg,#5c2a3a 50%,#fbeff2 50%);" title="Burgundy / blush"></button>
+      <button type="button" class="swatch" data-pattern="#2c2c2a" data-bg="#f1efe8" style="background:linear-gradient(135deg,#2c2c2a 50%,#f1efe8 50%);" title="Charcoal / bone"></button>
+    </div>
+
+    <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:14px;">
       <input type="checkbox" id="gradient-toggle" style="width:auto;">
       Use gradient instead of solid pattern color
     </label>
@@ -303,6 +333,45 @@
     </div>
   </div>
 
+  <div class="design-tab-panel" id="tab-logo">
+    <label for="logo-input">Center logo (optional)</label>
+    <div style="display:flex; gap:8px;">
+      <input type="file" id="logo-input" accept="image/*" style="flex:1;">
+      <button type="button" class="secondary" id="logo-remove-btn" style="width:auto; padding:8px 12px; margin-top:0;">Remove</button>
+    </div>
+    <div class="row">
+      <div>
+        <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
+          <input type="checkbox" id="logo-bg-toggle" checked style="width:auto;">
+          Logo background
+        </label>
+      </div>
+      <div>
+        <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
+          <input type="checkbox" id="logo-round-toggle" checked style="width:auto;">
+          Logo round
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="design-tab-panel" id="tab-background">
+    <label for="bg-image-input">Background image (optional)</label>
+    <div style="display:flex; gap:8px;">
+      <input type="file" id="bg-image-input" accept="image/*" style="flex:1;">
+      <button type="button" class="secondary" id="bg-image-remove-btn" style="width:auto; padding:8px 12px; margin-top:0;">Remove</button>
+    </div>
+
+    <label for="wash-slider" style="margin-top:10px;">Background fade (higher = more scannable)</label>
+    <input type="range" id="wash-slider" min="30" max="90" value="65" style="width:100%;">
+  </div>
+
+  </div>
+
+  </div>
+
+  <div class="preview-col">
+  <div class="step-label" style="margin-top:0;"><span class="num">3</span> Download</div>
   <div id="qrcode"></div>
 
   <div class="scan-hint">Test your code with a phone camera before printing or sharing it, especially with a logo or background image.</div>
@@ -317,9 +386,31 @@
   <div class="btn-row">
     <button class="secondary" id="save-history-btn">Save to recent</button>
   </div>
+  </div>
+
+  </div>
 
   <label style="margin-top:16px;">Recent codes</label>
   <div class="history-row" id="history-row"></div>
+
+  <button type="button" class="secondary" id="template-toggle" style="margin-top:16px;">Print templates ▾</button>
+  <div id="template-panel" style="display:none; margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
+    <label for="template-select">Choose a template</label>
+    <select id="template-select">
+      <option value="table-tent">Table tent (restaurant/cafe)</option>
+      <option value="event-badge">Event badge</option>
+      <option value="flyer">Flyer sheet (4 tear-off tabs)</option>
+    </select>
+
+    <label for="template-title" style="margin-top:10px;">Title</label>
+    <input type="text" id="template-title" placeholder="Scan to see our menu">
+
+    <label for="template-subtitle" style="margin-top:10px;">Subtitle (optional)</label>
+    <input type="text" id="template-subtitle" placeholder="Free Wi-Fi, order online, reviews...">
+
+    <button type="button" id="template-generate-btn" style="margin-top:10px;">Open printable page</button>
+    <p style="font-size:12px; color:#999; margin-top:8px;">Opens in a new tab — use your browser's Print (Ctrl/Cmd+P) to print or save as PDF.</p>
+  </div>
 
   <a href="https://buymeacoffee.com/hekrid" target="_blank" rel="noopener" style="display:block; text-decoration:none; margin-top:20px;">
     <button type="button" style="background:#FFDD00; color:#1a1a1a;">☕ Buy me a coffee</button>
@@ -332,6 +423,25 @@
 <script>
   const qrContainer = document.getElementById('qrcode');
   const typeSelect = document.getElementById('type-select');
+
+  document.getElementById('design-tabs').addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('.design-tab');
+    if (!tabBtn) return;
+    document.querySelectorAll('.design-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.design-tab-panel').forEach(p => p.classList.remove('active'));
+    tabBtn.classList.add('active');
+    document.getElementById('tab-' + tabBtn.dataset.tab).classList.add('active');
+  });
+
+  const typeChipRow = document.getElementById('type-chip-row');
+  typeChipRow.addEventListener('click', (e) => {
+    const chip = e.target.closest('.type-chip');
+    if (!chip) return;
+    typeChipRow.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    typeSelect.value = chip.dataset.type;
+    typeSelect.dispatchEvent(new Event('change'));
+  });
   const textInput = document.getElementById('text-input');
   const sizeSelect = document.getElementById('size-select');
   const colorInput = document.getElementById('color-input');
@@ -343,8 +453,6 @@
   const washSlider = document.getElementById('wash-slider');
   const logoBgToggle = document.getElementById('logo-bg-toggle');
   const logoRoundToggle = document.getElementById('logo-round-toggle');
-  const advancedToggle = document.getElementById('advanced-toggle');
-  const advancedPanel = document.getElementById('advanced-panel');
   const toast = document.getElementById('toast');
   const historyRow = document.getElementById('history-row');
 
@@ -353,7 +461,6 @@
   let bgImageDataUrl = null;
   let renderToken = 0;
 
-  // ---------- Type menu ----------
   const batchModeBox = document.getElementById('batch-mode-box');
   const batchModeCheckbox = document.getElementById('batch-mode-checkbox');
   const singleTextField = document.getElementById('single-text-field');
@@ -376,7 +483,6 @@
   typeSelect.addEventListener('change', () => {
     document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
     document.getElementById('fields-' + typeSelect.value).classList.add('active');
-    // Batch mode only makes sense for the URL/text type — reset it when leaving
     if (typeSelect.value !== 'text' && batchModeCheckbox.checked) {
       batchModeCheckbox.checked = false;
       singleTextField.style.display = 'block';
@@ -447,9 +553,6 @@
     return textInput.value.trim() || 'https://example.com';
   }
 
-  // ---------- Dynamic links (needs the Cloudflare Worker backend) ----------
-  // This is the site owner's own deployed backend — shared by every visitor.
-  // It is NOT something regular users need to set up themselves.
   const DEFAULT_WORKER_URL = 'https://qr-dynamic-links.the-hekrid.workers.dev';
 
   let currentDynamicUrl = null;
@@ -459,8 +562,6 @@
   const dynamicResult = document.getElementById('dynamic-result');
   const dynamicList = document.getElementById('dynamic-list');
 
-  // Use the built-in backend by default; only fall back to a locally saved
-  // override if someone has deliberately set one (e.g. for local testing).
   workerUrlInput.value = localStorage.getItem('qr_worker_url') || DEFAULT_WORKER_URL;
   workerUrlInput.addEventListener('change', () => {
     localStorage.setItem('qr_worker_url', workerUrlInput.value.trim());
@@ -582,14 +683,6 @@
   dynamicCreateBtn.addEventListener('click', createDynamicLink);
   renderDynamicList(workerUrlInput.value.trim().replace(/\/$/, ''));
 
-  // ---------- Advanced toggle ----------
-  advancedToggle.addEventListener('click', () => {
-    const isOpen = advancedPanel.style.display !== 'none';
-    advancedPanel.style.display = isOpen ? 'none' : 'block';
-    advancedToggle.textContent = isOpen ? 'Advanced options ▾' : 'Advanced options ▴';
-  });
-
-  // ---------- Color presets ----------
   document.getElementById('preset-row').addEventListener('click', (e) => {
     const btn = e.target.closest('.swatch');
     if (!btn) return;
@@ -598,7 +691,20 @@
     generateQR();
   });
 
-  // ---------- Core generation ----------
+  function buildEyeOptions(useGradient, color) {
+    if (!useGradient) return { color };
+    return {
+      gradient: {
+        type: 'linear',
+        rotation: Math.PI / 4,
+        colorStops: [
+          { offset: 0, color: document.getElementById('gradient-color-1').value },
+          { offset: 1, color: document.getElementById('gradient-color-2').value }
+        ]
+      }
+    };
+  }
+
   function generateQR() {
     const myToken = ++renderToken;
     qrContainer.innerHTML = '';
@@ -632,8 +738,8 @@
       margin: 0,
       qrOptions: { errorCorrectionLevel: 'H' },
       dotsOptions: dotsOptions,
-      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, color: color },
-      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', color: color },
+      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, ...buildEyeOptions(useGradient, color) },
+      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', ...buildEyeOptions(useGradient, color) },
       backgroundOptions: { color: bgImageDataUrl ? '#ffffff' : bgColor }
     });
     qr.append(qrContainer);
@@ -759,7 +865,6 @@
     ctx.closePath();
   }
 
-  // ---------- Download / copy ----------
   function getCurrentCanvas() {
     return qrContainer.querySelector('canvas');
   }
@@ -777,9 +882,6 @@
   }
 
   function downloadSVG() {
-    // Render a fresh vector copy via the styling library's own SVG mode,
-    // so dot shape/corners/gradient carry over correctly. Logo/background
-    // image overlays are raster-only compositing, so they aren't included.
     if (!qr) {
       showToast('SVG export unavailable for this code');
       return;
@@ -813,8 +915,8 @@
       margin: 0,
       qrOptions: { errorCorrectionLevel: 'H' },
       dotsOptions: dotsOptions,
-      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, color: color },
-      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', color: color },
+      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, ...buildEyeOptions(useGradient, color) },
+      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', ...buildEyeOptions(useGradient, color) },
       backgroundOptions: { color: bgColor }
     });
     svgQr.download({ name: 'qrcode', extension: 'svg' });
@@ -842,7 +944,6 @@
     setTimeout(() => toast.classList.remove('show'), 1800);
   }
 
-  // ---------- History (localStorage, this is a standalone site the user hosts themselves) ----------
   const TYPE_FIELD_IDS = {
     text: ['text-input'],
     wifi: ['wifi-ssid', 'wifi-password', 'wifi-encryption'],
@@ -902,8 +1003,6 @@
       img.src = h.thumb;
       btn.appendChild(img);
       btn.addEventListener('click', () => {
-        // Older saved entries (before this fix) only have raw text — fall
-        // back to loading them into the plain URL/text field.
         const type = h.type || 'text';
         typeSelect.value = type;
         document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
@@ -927,7 +1026,6 @@
     });
   }
 
-  // ---------- Image inputs ----------
   logoInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) { logoDataUrl = null; generateQR(); return; }
@@ -962,7 +1060,6 @@
     washDebounce = setTimeout(generateQR, 80);
   });
 
-  // ---------- Batch generation ----------
   const batchInput = document.getElementById('batch-input');
   const batchGenerateBtn = document.getElementById('batch-generate-btn');
   const batchError = document.getElementById('batch-error');
@@ -997,8 +1094,6 @@
       dotsOptions.color = color;
     }
 
-    // Render each code in a hidden offscreen container, one at a time,
-    // reusing the same simple (no logo/background) rendering path.
     const offscreen = document.createElement('div');
     offscreen.style.position = 'absolute';
     offscreen.style.left = '-9999px';
@@ -1014,8 +1109,8 @@
         margin: 0,
         qrOptions: { errorCorrectionLevel: 'H' },
         dotsOptions: dotsOptions,
-        cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, color: color },
-        cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', color: color },
+        cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, ...buildEyeOptions(useGradient, color) },
+        cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', ...buildEyeOptions(useGradient, color) },
         backgroundOptions: { color: bgColor }
       }).append(offscreen);
       await new Promise(res => setTimeout(res, 60));
@@ -1049,7 +1144,99 @@
     }
   });
 
-  // ---------- Wire up remaining inputs ----------
+  const templateToggle = document.getElementById('template-toggle');
+  const templatePanel = document.getElementById('template-panel');
+  const templateSelect = document.getElementById('template-select');
+  const templateTitle = document.getElementById('template-title');
+  const templateSubtitle = document.getElementById('template-subtitle');
+  const templateGenerateBtn = document.getElementById('template-generate-btn');
+
+  templateToggle.addEventListener('click', () => {
+    const isOpen = templatePanel.style.display !== 'none';
+    templatePanel.style.display = isOpen ? 'none' : 'block';
+    templateToggle.textContent = isOpen ? 'Print templates ▾' : 'Print templates ▴';
+  });
+
+  function buildTemplateHtml(kind, qrDataUrl, title, subtitle) {
+    const safeTitle = (title || 'Scan the QR code').replace(/</g, '&lt;');
+    const safeSubtitle = (subtitle || '').replace(/</g, '&lt;');
+
+    const sharedStyle = `
+      * { box-sizing: border-box; }
+      body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #fff; }
+      .sheet { display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; }
+      .card { border: 1px dashed #999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; page-break-inside: avoid; }
+      .card img { display: block; }
+      .card h2 { margin: 12px 0 4px; }
+      .card p { margin: 0; color: #555; }
+      @media print { .sheet { padding: 0; } .card { border: none; } }
+    `;
+
+    if (kind === 'table-tent') {
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Table tent</title><style>${sharedStyle}
+        .tent { width: 400px; margin: 20px auto; }
+        .panel { width: 400px; height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #ccc; }
+        .fold-line { border-top: 2px dashed #999; width: 400px; margin: 0 auto; }
+      </style></head><body>
+        <div class="tent">
+          <div class="panel">
+            <img src="${qrDataUrl}" width="180" height="180">
+            <h2>${safeTitle}</h2>
+            ${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}
+          </div>
+          <div class="fold-line"></div>
+          <div class="panel" style="transform: rotate(180deg);">
+            <img src="${qrDataUrl}" width="180" height="180">
+            <h2>${safeTitle}</h2>
+            ${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}
+          </div>
+        </div>
+        <p style="text-align:center; color:#999; font-size:12px;">Print, fold along the dashed line, and stand it up like a tent.</p>
+      </body></html>`;
+    }
+
+    if (kind === 'event-badge') {
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event badge</title><style>${sharedStyle}
+        .badge { width: 340px; height: 480px; border: 1px solid #ccc; border-radius: 16px; margin: 20px auto; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 24px; }
+        .badge .hole { width: 40px; height: 8px; background: #ddd; border-radius: 4px; }
+      </style></head><body>
+        <div class="badge">
+          <div class="hole"></div>
+          <h2 style="font-size:22px;">${safeTitle}</h2>
+          <img src="${qrDataUrl}" width="200" height="200">
+          ${safeSubtitle ? `<p>${safeSubtitle}</p>` : '<p></p>'}
+        </div>
+      </body></html>`;
+    }
+
+    let tabs = '';
+    for (let i = 0; i < 8; i++) {
+      tabs += `<div style="writing-mode:vertical-rl; border-left:1px dashed #ccc; padding:6px 4px; font-size:11px; color:#555;">${safeTitle}</div>`;
+    }
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Flyer</title><style>${sharedStyle}
+      .flyer { width: 400px; margin: 20px auto; border: 1px solid #ccc; padding: 20px; text-align:center; }
+      .tabs { display:flex; margin-top: 10px; }
+    </style></head><body>
+      <div class="flyer">
+        <h2>${safeTitle}</h2>
+        ${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}
+        <img src="${qrDataUrl}" width="220" height="220">
+        <div class="tabs">${tabs}</div>
+      </div>
+    </body></html>`;
+  }
+
+  templateGenerateBtn.addEventListener('click', () => {
+    const canvas = getCurrentCanvas();
+    if (!canvas) { showToast('Generate a QR code first'); return; }
+    const qrDataUrl = canvas.toDataURL('image/png');
+    const html = buildTemplateHtml(templateSelect.value, qrDataUrl, templateTitle.value, templateSubtitle.value);
+    const win = window.open('', '_blank');
+    if (!win) { showToast('Allow pop-ups to open the printable page'); return; }
+    win.document.write(html);
+    win.document.close();
+  });
+
   document.getElementById('download-btn').addEventListener('click', downloadQR);
   document.getElementById('download-svg-btn').addEventListener('click', downloadSVG);
   document.getElementById('copy-btn').addEventListener('click', copyToClipboard);
@@ -1080,7 +1267,6 @@
     el.addEventListener('change', generateQR);
   });
 
-  // Initial
   renderHistory();
   generateQR();
 </script>
