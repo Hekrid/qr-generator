@@ -746,6 +746,7 @@
 
     setTimeout(() => {
       if (myToken !== renderToken) return;
+      if (useGradient) recolorEyesWithGlobalGradient(size);
       if (bgImageDataUrl) {
         drawBackground(size, bgColor, myToken, () => {
           if (myToken !== renderToken) return;
@@ -755,6 +756,33 @@
         drawLogo(size, bgColor);
       }
     }, 60);
+  }
+
+  function recolorEyesWithGlobalGradient(size, targetCanvas) {
+    const canvas = targetCanvas || qrContainer.querySelector('canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const color1 = document.getElementById('gradient-color-1').value;
+    const color2 = document.getElementById('gradient-color-2').value;
+    const eyeSize = size * 0.19;
+    const corners = [
+      { x: 0, y: 0 },
+      { x: size - eyeSize, y: 0 },
+      { x: 0, y: size - eyeSize }
+    ];
+    corners.forEach(corner => {
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, color1);
+      gradient.addColorStop(1, color2);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(corner.x, corner.y, eyeSize, eyeSize);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = gradient;
+      ctx.fillRect(corner.x, corner.y, eyeSize, eyeSize);
+      ctx.restore();
+    });
   }
 
   function drawBackground(size, bgColor, myToken, onDone) {
@@ -1116,6 +1144,7 @@
       await new Promise(res => setTimeout(res, 60));
       const canvas = offscreen.querySelector('canvas');
       if (canvas) {
+        if (useGradient) recolorEyesWithGlobalGradient(size, canvas);
         const dataUrl = canvas.toDataURL('image/png').split(',')[1];
         const safeName = `qr-${i + 1}-${lines[i].replace(/[^a-z0-9]/gi, '_').slice(0, 24)}.png`;
         zip.file(safeName, dataUrl, { base64: true });
