@@ -746,7 +746,7 @@
 
     setTimeout(() => {
       if (myToken !== renderToken) return;
-      if (useGradient) recolorEyesWithGlobalGradient(size);
+      if (useGradient) recolorEyesWithGlobalGradient(size, null, bgImageDataUrl ? '#ffffff' : bgColor);
       if (bgImageDataUrl) {
         drawBackground(size, bgColor, myToken, () => {
           if (myToken !== renderToken) return;
@@ -758,30 +758,54 @@
     }, 60);
   }
 
-  function recolorEyesWithGlobalGradient(size, targetCanvas) {
+  function hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16)
+    };
+  }
+
+  function recolorEyesWithGlobalGradient(size, targetCanvas, bgColorHex) {
     const canvas = targetCanvas || qrContainer.querySelector('canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const color1 = document.getElementById('gradient-color-1').value;
-    const color2 = document.getElementById('gradient-color-2').value;
-    const eyeSize = size * 0.19;
+    const color1 = hexToRgb(document.getElementById('gradient-color-1').value);
+    const color2 = hexToRgb(document.getElementById('gradient-color-2').value);
+    const bg = hexToRgb(bgColorHex || '#ffffff');
+    const eyeSize = Math.ceil(size * 0.22);
     const corners = [
       { x: 0, y: 0 },
       { x: size - eyeSize, y: 0 },
       { x: 0, y: size - eyeSize }
     ];
+
     corners.forEach(corner => {
-      const gradient = ctx.createLinearGradient(0, 0, size, size);
-      gradient.addColorStop(0, color1);
-      gradient.addColorStop(1, color2);
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(corner.x, corner.y, eyeSize, eyeSize);
-      ctx.clip();
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = gradient;
-      ctx.fillRect(corner.x, corner.y, eyeSize, eyeSize);
-      ctx.restore();
+      const cx = Math.max(0, corner.x);
+      const cy = Math.max(0, corner.y);
+      const w = Math.min(eyeSize, size - cx);
+      const h = Math.min(eyeSize, size - cy);
+      const imgData = ctx.getImageData(cx, cy, w, h);
+      const data = imgData.data;
+
+      for (let py = 0; py < h; py++) {
+        for (let px = 0; px < w; px++) {
+          const idx = (py * w + px) * 4;
+          const a = data[idx + 3];
+          if (a === 0) continue;
+          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+          if (Math.abs(r - bg.r) < 18 && Math.abs(g - bg.g) < 18 && Math.abs(b - bg.b) < 18) continue;
+
+          const absX = cx + px;
+          const absY = cy + py;
+          const t = Math.min(1, Math.max(0, (absX + absY) / (2 * size)));
+          data[idx] = color1.r + (color2.r - color1.r) * t;
+          data[idx + 1] = color1.g + (color2.g - color1.g) * t;
+          data[idx + 2] = color1.b + (color2.b - color1.b) * t;
+        }
+      }
+      ctx.putImageData(imgData, cx, cy);
     });
   }
 
@@ -1144,7 +1168,7 @@
       await new Promise(res => setTimeout(res, 60));
       const canvas = offscreen.querySelector('canvas');
       if (canvas) {
-        if (useGradient) recolorEyesWithGlobalGradient(size, canvas);
+        if (useGradient) recolorEyesWithGlobalGradient(size, canvas, bgColor);
         const dataUrl = canvas.toDataURL('image/png').split(',')[1];
         const safeName = `qr-${i + 1}-${lines[i].replace(/[^a-z0-9]/gi, '_').slice(0, 24)}.png`;
         zip.file(safeName, dataUrl, { base64: true });
