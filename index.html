@@ -161,6 +161,7 @@
     font-size: 12px; color: var(--hint-text); background: var(--hint-bg); border: 1px solid var(--hint-border);
     border-radius: 8px; padding: 8px 10px; margin-top: 10px; text-align: center;
   }
+  .preview-note { font-size: 12.5px; color: var(--muted); background: var(--soft); border-radius: 8px; padding: 8px 10px; line-height: 1.45; text-align: center; }
   .scan-status { font-size: 12.5px; text-align: center; margin: -12px 0 4px; color: var(--muted); line-height: 1.45; }
   .scan-status.good { color: var(--good); }
   .scan-status.bad { color: var(--danger); }
@@ -508,7 +509,8 @@
   </div>
 
   <div class="preview-col">
-    <div class="step-label"><span class="num">3</span> Download</div>
+    <div class="step-label"><span class="num">3</span> <span id="output-title">Download</span></div>
+    <div class="preview-note" id="preview-note" hidden></div>
     <div id="qrcode"></div>
     <div class="scan-status" id="scan-status" hidden></div>
 
@@ -644,9 +646,29 @@
     document.querySelectorAll('.design-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabBtn.dataset.tab));
   });
 
-  function setOutputVisible(visible) {
-    qrContainer.style.display = visible ? 'flex' : 'none';
-    document.querySelectorAll('.scan-hint, .btn-row, #scan-status').forEach(el => { el.style.display = visible ? '' : 'none'; });
+  function batchLines() {
+    return batchInput.value.split('\n').map(l => l.trim()).filter(Boolean);
+  }
+
+  function isPreviewOnly() {
+    return (currentType === 'text' && batchModeCheckbox.checked) || (currentType === 'dynamic' && !currentDynamicUrl);
+  }
+
+  function updateOutputMode() {
+    const previewOnly = isPreviewOnly();
+    document.querySelectorAll('.scan-hint, .btn-row').forEach(el => { el.style.display = previewOnly ? 'none' : ''; });
+    $('output-title').textContent = previewOnly ? 'Preview' : 'Download';
+    const note = $('preview-note');
+    note.hidden = !previewOnly;
+    if (!previewOnly) return;
+    if (currentType === 'dynamic') {
+      note.textContent = "Preview only — this is how your code will look. It's created when you click Create dynamic link.";
+    } else {
+      const count = batchLines().length;
+      note.textContent = count > 1
+        ? `Preview of the first code (1 of ${count}). Use Generate ZIP to download them all.`
+        : 'Preview of the first code. Use Generate ZIP to download your codes.';
+    }
   }
 
   function setBatchMode(on) {
@@ -660,8 +682,7 @@
     typeChipRow.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === type));
     document.querySelectorAll('.type-fields').forEach(el => el.classList.toggle('active', el.id === 'fields-' + type));
     if (type !== 'text' && batchModeCheckbox.checked) setBatchMode(false);
-    const hideOutput = (type === 'text' && batchModeCheckbox.checked) || (type === 'dynamic' && !currentDynamicUrl);
-    setOutputVisible(!hideOutput);
+    updateOutputMode();
     if (type === 'dynamic') renderDynamicList();
     generateQR();
   }
@@ -673,8 +694,8 @@
 
   batchModeBox.addEventListener('click', () => {
     setBatchMode(!batchModeCheckbox.checked);
-    setOutputVisible(!batchModeCheckbox.checked);
-    if (!batchModeCheckbox.checked) generateQR();
+    updateOutputMode();
+    generateQR();
   });
 
   function setFieldError(inputId, errorId, isInvalid) {
@@ -723,7 +744,8 @@
       setFieldError('phone-number', 'phone-number-error', num.length > 0 && !/^\+?[0-9\s-]{4,}$/.test(num));
       return `tel:${num}`;
     }
-    if (type === 'dynamic') return currentDynamicUrl || '';
+    if (type === 'dynamic') return currentDynamicUrl || `${API_URL}/r/xxxxxx`;
+    if (batchModeCheckbox.checked) return batchLines()[0] || 'https://example.com';
     return textInput.value.trim() || 'https://example.com';
   }
 
@@ -993,13 +1015,21 @@
       return { canvas, status: 'unknown', logoSize };
     }
     if (isStale()) throw STALE;
-    if (passesTestScan(decode, canvas)) return { canvas, status: 'good', logoSize };
+    const squareDesign = { ...design, dotType: 'square', cornerType: 'square' };
+    const alreadySquare = design.dotType === 'square' && design.cornerType === 'square';
+    const testCanvas = alreadySquare ? canvas : await composeQr(data, squareDesign);
+    if (isStale()) throw STALE;
+    if (passesTestScan(decode, testCanvas)) return { canvas, status: 'good', logoSize };
 
     if (design.logo) {
       for (let size = Math.round(design.logo.size * 100) - 5; size >= LOGO_MIN_SIZE * 100; size -= 5) {
-        const smaller = await composeQr(data, design, size / 100);
+        const twin = await composeQr(data, squareDesign, size / 100);
         if (isStale()) throw STALE;
-        if (passesTestScan(decode, smaller)) return { canvas: smaller, status: 'shrunk', logoSize: size / 100 };
+        if (passesTestScan(decode, twin)) {
+          const smaller = alreadySquare ? twin : await composeQr(data, design, size / 100);
+          if (isStale()) throw STALE;
+          return { canvas: smaller, status: 'shrunk', logoSize: size / 100 };
+        }
       }
     }
     return { canvas, status: 'bad', logoSize };
@@ -1353,7 +1383,7 @@
       currentDynamicUrl = data.url;
       dynamicResult.textContent = `Created: ${data.url}`;
       dynamicResult.hidden = false;
-      setOutputVisible(true);
+      updateOutputMode();
       generateQR();
       renderDynamicList();
     } catch (err) {
@@ -1402,7 +1432,7 @@
 
       actions.appendChild(makeButton('Use this code', 'secondary small', () => {
         currentDynamicUrl = link.url;
-        setOutputVisible(true);
+        updateOutputMode();
         generateQR();
       }));
 
@@ -1428,7 +1458,7 @@
           if (currentDynamicUrl === link.url) {
             currentDynamicUrl = null;
             dynamicResult.hidden = true;
-            setOutputVisible(false);
+            updateOutputMode();
             generateQR();
           }
           showToast('Link deleted');
@@ -1517,7 +1547,7 @@
   });
 
   async function generateBatchZip() {
-    const lines = batchInput.value.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = batchLines();
     batchInput.classList.toggle('invalid', lines.length === 0);
     batchError.classList.toggle('show', lines.length === 0);
     if (lines.length === 0) return;
@@ -1554,11 +1584,15 @@
   }
 
   batchGenerateBtn.addEventListener('click', generateBatchZip);
+  let batchDebounce = null;
   batchInput.addEventListener('input', () => {
     if (batchInput.value.trim()) {
       batchInput.classList.remove('invalid');
       batchError.classList.remove('show');
     }
+    updateOutputMode();
+    clearTimeout(batchDebounce);
+    batchDebounce = setTimeout(generateQR, 120);
   });
 
   const templateToggle = $('template-toggle');
@@ -1633,6 +1667,10 @@
   }
 
   $('template-generate-btn').addEventListener('click', () => {
+    if (isPreviewOnly()) {
+      showToast(currentType === 'dynamic' ? 'Create the dynamic link first' : 'Turn off batch mode to print a template');
+      return;
+    }
     const canvas = getCurrentCanvas();
     if (!canvas) { showToast('Generate a QR code first'); return; }
     const html = buildTemplateHtml($('template-select').value, canvas.toDataURL('image/png'), $('template-title').value, $('template-subtitle').value);
