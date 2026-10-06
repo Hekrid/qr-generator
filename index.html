@@ -220,6 +220,15 @@
   .design-tab.active { color: var(--text); border-bottom-color: var(--text); }
   .design-tab-panel { display: none; padding-top: 14px; }
   .design-tab-panel.active { display: block; }
+  .frame-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; margin-top: 6px; }
+  .frame-option {
+    margin: 0; padding: 6px 4px 4px; height: auto; background: #ffffff; color: #1a1a1a;
+    border: 2px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .frame-option:hover { background: #ffffff; border-color: var(--muted); }
+  .frame-option.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .frame-option svg { width: 100%; height: 54px; }
+  .frame-option span { font-size: 11px; font-weight: 500; color: #555; }
   .collapsible { margin-top: 12px; border-top: 1px solid var(--border-soft); padding-top: 12px; }
   .small-note { font-size: 12px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
   .warn-text {
@@ -432,6 +441,7 @@
     <button type="button" class="design-tab" data-tab="colors">Colors</button>
     <button type="button" class="design-tab" data-tab="logo">Logo</button>
     <button type="button" class="design-tab" data-tab="background">Background</button>
+    <button type="button" class="design-tab" data-tab="frame">Frame</button>
   </div>
 
   <div class="design-tab-panel active" id="tab-shape">
@@ -530,6 +540,26 @@
     <input type="range" id="wash-slider" min="30" max="90" value="65">
   </div>
 
+  <div class="design-tab-panel" id="tab-frame">
+    <label>Frame style</label>
+    <div class="frame-grid" id="frame-grid" role="radiogroup" aria-label="Frame style"></div>
+    <div id="frame-options" hidden>
+      <label for="frame-text" class="spaced">Frame text</label>
+      <input type="text" id="frame-text" value="SCAN ME" maxlength="24" placeholder="SCAN ME">
+      <div class="row">
+        <div>
+          <label for="frame-color">Frame color</label>
+          <input type="color" id="frame-color" value="#000000">
+        </div>
+        <div>
+          <label for="frame-text-color" id="frame-text-color-label">Text color</label>
+          <input type="color" id="frame-text-color" value="#ffffff">
+        </div>
+      </div>
+      <p class="small-note">The frame leaves a clear margin around the code so phones can still find it. Long text is shrunk to fit.</p>
+    </div>
+  </div>
+
   </div>
 
   <div class="preview-col">
@@ -624,6 +654,10 @@
   let currentType = 'text';
   let currentDynamicUrl = null;
   let logoDataUrl = null;
+  let frameKind = 'none';
+  const frameTextInput = $('frame-text');
+  const frameColorInput = $('frame-color');
+  const frameTextColorInput = $('frame-text-color');
   let bgImageDataUrl = null;
   let renderToken = 0;
   let toastTimer = null;
@@ -796,7 +830,10 @@
       ecc: logoDataUrl || bgImageDataUrl ? 'H' : 'M',
       logo: logoDataUrl
         ? { size: parseInt(logoSizeSlider.value, 10) / 100, clear: logoBgToggle.checked }
-        : null
+        : null,
+      frame: frameKind === 'none'
+        ? null
+        : { kind: frameKind, text: frameTextInput.value.trim(), color: frameColorInput.value, textColor: frameTextColorInput.value }
     };
   }
 
@@ -988,6 +1025,150 @@
     return canvas;
   }
 
+  // ---------- Frames ----------
+  // Each frame is described once as SVG pieces drawn behind ("back") and in
+  // front of ("front") the code, so the PNG preview/download and the SVG
+  // download always look the same.
+  const FRAME_FONT = "'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', sans-serif";
+  const FRAME_KINDS = ['none', 'below', 'above', 'bubble', 'pocket', 'outline'];
+  let measureCtx = null;
+
+  function xmlEscape(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+  }
+
+  function fitFontSize(text, maxWidth, maxHeight) {
+    if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
+    let size = maxHeight * 0.6;
+    measureCtx.font = `700 ${size}px ${FRAME_FONT}`;
+    const width = measureCtx.measureText(text).width;
+    if (width > maxWidth) size *= maxWidth / width;
+    return Math.max(4, size);
+  }
+
+  function frameText(text, cx, cy, maxWidth, maxHeight, color) {
+    if (!text) return '';
+    const size = fitFontSize(text, maxWidth, maxHeight);
+    return `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-family="${xmlEscape(FRAME_FONT)}" font-weight="700" font-size="${size.toFixed(2)}" fill="${color}">${xmlEscape(text)}</text>`;
+  }
+
+  // Path for a rectangle with separate top and bottom corner radii.
+  function roundRectPath(x, y, w, h, rTop, rBottom) {
+    return `M${x + rTop},${y} H${x + w - rTop} Q${x + w},${y} ${x + w},${y + rTop} V${y + h - rBottom} Q${x + w},${y + h} ${x + w - rBottom},${y + h} H${x + rBottom} Q${x},${y + h} ${x},${y + h - rBottom} V${y + rTop} Q${x},${y} ${x + rTop},${y} Z`;
+  }
+
+  function frameLayout(frame, S, bg) {
+    const pad = Math.round(S * 0.1);      // quiet zone around the code, in the code's background color
+    const card = S + pad * 2;
+    const b = Math.round(S * 0.05);       // frame thickness
+    const r = Math.round(S * 0.07);       // corner radius
+    const labelH = Math.round(S * 0.26);  // height of the label area
+    const { color, textColor, text } = frame;
+
+    if (frame.kind === 'below' || frame.kind === 'above') {
+      const w = card + b * 2;
+      const h = b + card + labelH;
+      const cardY = frame.kind === 'below' ? b : labelH;
+      const labelY = frame.kind === 'below' ? b + card + labelH / 2 : labelH / 2;
+      return {
+        w, h, qrX: b + pad, qrY: cardY + pad,
+        back: `<rect width="${w}" height="${h}" rx="${r}" fill="${color}"/><rect x="${b}" y="${cardY}" width="${card}" height="${card}" rx="${Math.round(r * 0.55)}" fill="${bg}"/>`,
+        front: frameText(text, w / 2, labelY, w - b * 4, labelH, textColor)
+      };
+    }
+
+    if (frame.kind === 'bubble') {
+      const w = card + b * 2;
+      const bubbleW = Math.round(w * 0.86);
+      const bubbleX = Math.round((w - bubbleW) / 2);
+      const tip = Math.round(S * 0.07);
+      const top = labelH + tip + Math.round(S * 0.03);
+      const h = top + card + b * 2;
+      const half = Math.round(S * 0.08);
+      return {
+        w, h, qrX: b + pad, qrY: top + b + pad,
+        back: `<rect x="${bubbleX}" width="${bubbleW}" height="${labelH}" rx="${r}" fill="${color}"/>` +
+          `<path d="M${w / 2 - half},${labelH - 1} L${w / 2},${labelH + tip} L${w / 2 + half},${labelH - 1} Z" fill="${color}"/>` +
+          `<rect x="${b / 2}" y="${top + b / 2}" width="${w - b}" height="${card + b}" rx="${r}" fill="${bg}" stroke="${color}" stroke-width="${b}"/>`,
+        front: frameText(text, w / 2, labelH / 2, bubbleW - b * 3, labelH, textColor)
+      };
+    }
+
+    if (frame.kind === 'pocket') {
+      const w = card + Math.round(S * 0.18);
+      const cardX = (w - card) / 2;
+      const envTop = Math.round(pad + S + pad * 0.55); // front panel never reaches the code itself
+      const dip = Math.round(S * 0.16);
+      const backTop = envTop - Math.round(S * 0.2);
+      const h = envTop + dip + labelH;
+      const line = Math.max(1, Math.round(S * 0.012));
+      const rb = Math.round(r * 0.8);
+      return {
+        w, h, qrX: cardX + pad, qrY: pad,
+        back: `<path d="${roundRectPath(0, backTop, w, h - backTop, Math.round(r * 0.5), rb)}" fill="${color}"/>` +
+          `<rect x="${cardX + line / 2}" y="${line / 2}" width="${card - line}" height="${envTop + dip - line}" rx="${Math.round(r * 0.55)}" fill="${bg}" stroke="${color}" stroke-width="${line}"/>`,
+        front: `<path d="M0,${envTop} L${w / 2},${envTop + dip} L${w},${envTop} V${h - rb} Q${w},${h} ${w - rb},${h} H${rb} Q0,${h} 0,${h - rb} Z" fill="${color}"/>` +
+          `<path d="M0,${envTop} L${w / 2},${envTop + dip} L${w},${envTop}" fill="none" stroke="${bg}" stroke-opacity="0.35" stroke-width="${line}"/>` +
+          frameText(text, w / 2, envTop + dip + labelH * 0.47, w * 0.78, labelH, textColor)
+      };
+    }
+
+    if (frame.kind === 'outline') {
+      const w = card + b * 2;
+      const textH = Math.round(labelH * 0.8);
+      const h = b + card + textH + b;
+      return {
+        w, h, qrX: b + pad, qrY: b + pad,
+        back: `<rect x="${b / 2}" y="${b / 2}" width="${w - b}" height="${h - b}" rx="${r}" fill="${bg}" stroke="${color}" stroke-width="${b}"/>`,
+        front: frameText(text, w / 2, b + card + textH / 2 - pad * 0.25, w - b * 4, textH, color)
+      };
+    }
+    return null;
+  }
+
+  function frameSvgDoc(layout, inner) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${layout.w}" height="${layout.h}" viewBox="0 0 ${layout.w} ${layout.h}">${layout.back}${inner || ''}${layout.front}</svg>`;
+  }
+
+  async function svgPieceToImage(svgText) {
+    const url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
+    try {
+      return await loadImage(url);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  // Draws the frame around an already-finished code canvas (logo, background
+  // image and test scan included).
+  async function applyFrame(qrCanvas, design) {
+    if (!design.frame) return qrCanvas;
+    const S = qrCanvas.width;
+    const layout = frameLayout(design.frame, S, design.bgColor);
+    const canvas = document.createElement('canvas');
+    canvas.width = layout.w;
+    canvas.height = layout.h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(await svgPieceToImage(frameSvgDoc({ ...layout, front: '' })), 0, 0);
+    ctx.drawImage(qrCanvas, layout.qrX, layout.qrY, S, S);
+    if (layout.front) ctx.drawImage(await svgPieceToImage(frameSvgDoc({ ...layout, back: '' })), 0, 0);
+    return canvas;
+  }
+
+  // Wraps the code's SVG in the frame for the SVG download.
+  function applyFrameToSvg(qrSvg, design) {
+    if (!design.frame) return qrSvg;
+    const doc = new DOMParser().parseFromString(qrSvg, 'image/svg+xml');
+    const root = doc.documentElement;
+    const layout = frameLayout(design.frame, design.size, design.bgColor);
+    root.setAttribute('x', String(layout.qrX));
+    root.setAttribute('y', String(layout.qrY));
+    root.setAttribute('width', String(design.size));
+    root.setAttribute('height', String(design.size));
+    if (!root.getAttribute('viewBox')) root.setAttribute('viewBox', `0 0 ${design.size} ${design.size}`);
+    return frameSvgDoc(layout, new XMLSerializer().serializeToString(root));
+  }
+
   function loadDecoder() {
     if (window.jsQR) return Promise.resolve(window.jsQR);
     if (!decoderPromise) {
@@ -1088,9 +1269,12 @@
       return;
     }
     try {
-      const result = await composeVerified(data, getDesign(), () => myToken !== renderToken);
+      const design = getDesign();
+      const result = await composeVerified(data, design, () => myToken !== renderToken);
       if (myToken !== renderToken) return;
-      qrContainer.replaceChildren(result.canvas);
+      const shown = await applyFrame(result.canvas, design);
+      if (myToken !== renderToken) return;
+      qrContainer.replaceChildren(shown);
       setScanStatus(result.status);
       lastRender = { data, logoSize: result.logoSize };
     } catch (err) {
@@ -1138,7 +1322,7 @@
           }
         : null;
       const { svg } = postProcessSvg(await rawSvg(data, design, design.bgColor, logo), design, false);
-      triggerDownload(new Blob([svg], { type: 'image/svg+xml' }), 'qrcode.svg');
+      triggerDownload(new Blob([applyFrameToSvg(svg, design)], { type: 'image/svg+xml' }), 'qrcode.svg');
       saveToHistory(data);
       if (bgImageDataUrl) showToast("The SVG doesn't include the background image — use PNG for that");
     } catch (err) {
@@ -1637,7 +1821,8 @@
       try {
         const result = await composeVerified(lines[i], design);
         if (result.status === 'bad') unreadable++;
-        const blob = await new Promise(resolve => result.canvas.toBlob(resolve, 'image/png'));
+        const framed = await applyFrame(result.canvas, design);
+        const blob = await new Promise(resolve => framed.toBlob(resolve, 'image/png'));
         const safeName = `qr-${i + 1}-${lines[i].replace(/[^a-z0-9]/gi, '_').slice(0, 24)}.png`;
         zip.file(safeName, blob);
       } catch (err) {
@@ -1777,6 +1962,48 @@
     updateGradientLabels();
     generateQR();
   });
+
+  const FRAME_NAMES = { none: 'None', below: 'Label below', above: 'Label above', bubble: 'Bubble', pocket: 'Pocket', outline: 'Outline' };
+
+  function frameThumbSvg(kind) {
+    if (kind === 'none') {
+      return '<svg viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="17" fill="none" stroke="#888" stroke-width="3"/><path d="M18 42 L42 18" stroke="#888" stroke-width="3"/></svg>';
+    }
+    const S = 60;
+    const layout = frameLayout({ kind, text: 'SCAN ME', color: '#1a1a1a', textColor: '#ffffff' }, S, '#ffffff');
+    const cells = [[0, 0], [0, 4], [4, 0]].map(([cx, cy]) =>
+      `<rect x="${cx * 6 + 1.5}" y="${cy * 6 + 1.5}" width="15" height="15" fill="none" stroke="#1a1a1a" stroke-width="3"/><rect x="${cx * 6 + 6}" y="${cy * 6 + 6}" width="6" height="6" fill="#1a1a1a"/>`
+    ).join('') + '<rect x="30" y="30" width="6" height="6" fill="#1a1a1a"/><rect x="42" y="36" width="6" height="12" fill="#1a1a1a"/><rect x="30" y="48" width="12" height="6" fill="#1a1a1a"/><rect x="48" y="24" width="6" height="6" fill="#1a1a1a"/>';
+    const inner = `<svg x="${layout.qrX}" y="${layout.qrY}" width="${S}" height="${S}" viewBox="0 0 60 60">${cells}</svg>`;
+    return frameSvgDoc(layout, inner).replace('<svg ', '<svg aria-hidden="true" preserveAspectRatio="xMidYMid meet" ');
+  }
+
+  function setFrame(kind) {
+    frameKind = kind;
+    $('frame-grid').querySelectorAll('.frame-option').forEach(btn => {
+      const on = btn.dataset.frame === kind;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-checked', String(on));
+    });
+    $('frame-options').hidden = kind === 'none';
+    // The outline frame writes its text in the frame color, so it has no separate text color.
+    $('frame-text-color').disabled = kind === 'outline';
+    $('frame-text-color-label').style.opacity = kind === 'outline' ? '0.5' : '';
+    generateQR();
+  }
+
+  FRAME_KINDS.forEach(kind => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'frame-option' + (kind === 'none' ? ' active' : '');
+    btn.dataset.frame = kind;
+    btn.setAttribute('role', 'radio');
+    btn.setAttribute('aria-checked', String(kind === 'none'));
+    btn.innerHTML = frameThumbSvg(kind) + `<span>${FRAME_NAMES[kind]}</span>`;
+    btn.addEventListener('click', () => setFrame(kind));
+    $('frame-grid').appendChild(btn);
+  });
+  [frameTextInput, frameColorInput, frameTextColorInput].forEach(el => el.addEventListener('input', generateQR));
 
   [textInput, colorInput, bgColorInput, gradientColor1, gradientColor2].forEach(el => el.addEventListener('input', generateQR));
   [sizeSelect, dotStyleSelect, cornerStyleSelect, logoBgToggle, logoRoundToggle].forEach(el => el.addEventListener('change', generateQR));
