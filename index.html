@@ -132,6 +132,7 @@
   input[type="range"] { width: 100%; }
   #qrcode { display: flex; justify-content: center; margin: 24px 0; min-height: 200px; align-items: center; }
   #qrcode canvas { border-radius: 8px; max-width: 100%; height: auto; }
+  .size-note { text-align: center; font-size: 12px; color: var(--faint); margin: -14px 0 10px; }
   button {
     width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--primary);
     color: var(--on-primary); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px;
@@ -428,9 +429,9 @@
     <div>
       <label for="size-select">Size</label>
       <select id="size-select">
-        <option value="200">Small (200px)</option>
-        <option value="300" selected>Medium (300px)</option>
-        <option value="500">Large (500px)</option>
+        <option value="200">Small (200 px wide)</option>
+        <option value="300" selected>Medium (300 px wide)</option>
+        <option value="500">Large (500 px wide)</option>
       </select>
     </div>
   </div>
@@ -566,6 +567,7 @@
     <div class="step-label"><span class="num">3</span> <span id="output-title">Download</span></div>
     <div class="preview-note" id="preview-note" hidden></div>
     <div id="qrcode"></div>
+    <div class="size-note" id="size-note" hidden></div>
     <div class="scan-status" id="scan-status" hidden></div>
 
     <div class="scan-hint">Test your code with a phone camera before printing or sharing it, especially with a logo or background image.</div>
@@ -655,6 +657,8 @@
   let currentDynamicUrl = null;
   let logoDataUrl = null;
   let frameKind = 'none';
+  const sizeNote = $('size-note');
+  const LARGEST_OUTPUT = 500;
   const frameTextInput = $('frame-text');
   const frameColorInput = $('frame-color');
   const frameTextColorInput = $('frame-text-color');
@@ -817,9 +821,27 @@
   let preparedLogo = { key: null, url: null };
   let decoderPromise = null;
 
+  // The size menu sets the width of the finished image (frame and margin
+  // included), so work out how big the code itself has to be for that.
+  function codeSizeFor(outputWidth, frame) {
+    const f = frame || { kind: 'none' };
+    let size = Math.round(outputWidth * 1000 / frameLayout(f, 1000, '#fff').w) + 3;
+    while (size > 1 && frameLayout(f, size, '#fff').w > outputWidth) size--;
+    return { size, extra: outputWidth - frameLayout(f, size, '#fff').w };
+  }
+
+  function currentFrame() {
+    return frameKind === 'none'
+      ? null
+      : { kind: frameKind, text: frameTextInput.value.trim(), color: frameColorInput.value, textColor: frameTextColorInput.value };
+  }
+
   function getDesign() {
+    const frame = currentFrame();
+    const outputWidth = parseInt(sizeSelect.value, 10);
     return {
-      size: parseInt(sizeSelect.value, 10),
+      outputWidth,
+      ...(({ size, extra }) => ({ size, frameExtra: extra }))(codeSizeFor(outputWidth, frame)),
       color: colorInput.value,
       bgColor: bgColorInput.value,
       dotType: dotStyleSelect.value,
@@ -831,9 +853,7 @@
       logo: logoDataUrl
         ? { size: parseInt(logoSizeSlider.value, 10) / 100, clear: logoBgToggle.checked }
         : null,
-      frame: frameKind === 'none'
-        ? null
-        : { kind: frameKind, text: frameTextInput.value.trim(), color: frameColorInput.value, textColor: frameTextColorInput.value }
+      frame
     };
   }
 
@@ -1057,7 +1077,9 @@
     return `M${x + rTop},${y} H${x + w - rTop} Q${x + w},${y} ${x + w},${y + rTop} V${y + h - rBottom} Q${x + w},${y + h} ${x + w - rBottom},${y + h} H${x + rBottom} Q${x},${y + h} ${x},${y + h - rBottom} V${y + rTop} Q${x},${y} ${x + rTop},${y} Z`;
   }
 
-  function frameLayout(frame, S, bg) {
+  // `extra` adds a pixel or two to the right edge so the width can hit the
+  // chosen size exactly.
+  function frameLayout(frame, S, bg, extra = 0) {
     const pad = Math.round(S * 0.1);      // quiet zone around the code, in the code's background color
     const card = S + pad * 2;
     const b = Math.round(S * 0.05);       // frame thickness
@@ -1067,12 +1089,13 @@
 
     // No frame: just the blank margin ("quiet zone") scanners need around a code.
     if (frame.kind === 'none') {
-      const w = card;
-      return { w, h: w, qrX: pad, qrY: pad, back: `<rect width="${w}" height="${w}" fill="${bg}"/>`, front: '' };
+      const w = card + extra;
+      const h = card + extra;
+      return { w, h, qrX: pad, qrY: pad, back: `<rect width="${w}" height="${h}" fill="${bg}"/>`, front: '' };
     }
 
     if (frame.kind === 'below' || frame.kind === 'above') {
-      const w = card + b * 2;
+      const w = card + b * 2 + extra;
       const h = b + card + labelH;
       const cardY = frame.kind === 'below' ? b : labelH;
       const labelY = frame.kind === 'below' ? b + card + labelH / 2 : labelH / 2;
@@ -1084,7 +1107,7 @@
     }
 
     if (frame.kind === 'bubble') {
-      const w = card + b * 2;
+      const w = card + b * 2 + extra;
       const bubbleW = Math.round(w * 0.86);
       const bubbleX = Math.round((w - bubbleW) / 2);
       const tip = Math.round(S * 0.07);
@@ -1101,8 +1124,8 @@
     }
 
     if (frame.kind === 'pocket') {
-      const w = card + Math.round(S * 0.18);
-      const cardX = (w - card) / 2;
+      const w = card + Math.round(S * 0.18) + extra;
+      const cardX = Math.floor((w - card) / 2); // whole pixels keep the code sharp
       const envTop = Math.round(pad + S + pad * 0.55); // front panel never reaches the code itself
       const dip = Math.round(S * 0.16);
       const backTop = envTop - Math.round(S * 0.2);
@@ -1120,7 +1143,7 @@
     }
 
     if (frame.kind === 'outline') {
-      const w = card + b * 2;
+      const w = card + b * 2 + extra;
       const textH = Math.round(labelH * 0.8);
       const h = b + card + textH + b;
       return {
@@ -1149,7 +1172,7 @@
   // image and test scan included).
   async function applyFrame(qrCanvas, design) {
     const S = qrCanvas.width;
-    const layout = frameLayout(design.frame || { kind: 'none' }, S, design.bgColor);
+    const layout = frameLayout(design.frame || { kind: 'none' }, S, design.bgColor, design.frameExtra || 0);
     const canvas = document.createElement('canvas');
     canvas.width = layout.w;
     canvas.height = layout.h;
@@ -1164,7 +1187,7 @@
   function applyFrameToSvg(qrSvg, design) {
     const doc = new DOMParser().parseFromString(qrSvg, 'image/svg+xml');
     const root = doc.documentElement;
-    const layout = frameLayout(design.frame || { kind: 'none' }, design.size, design.bgColor);
+    const layout = frameLayout(design.frame || { kind: 'none' }, design.size, design.bgColor, design.frameExtra || 0);
     root.setAttribute('x', String(layout.qrX));
     root.setAttribute('y', String(layout.qrY));
     root.setAttribute('width', String(design.size));
@@ -1268,6 +1291,7 @@
     const data = buildPayload();
     if (!data) {
       qrContainer.replaceChildren();
+      sizeNote.hidden = true;
       setScanStatus(null);
       lastRender = null;
       return;
@@ -1278,12 +1302,17 @@
       if (myToken !== renderToken) return;
       const shown = await applyFrame(result.canvas, design);
       if (myToken !== renderToken) return;
+      // Show sizes in proportion: the largest option fills the preview.
+      shown.style.width = `${(shown.width / LARGEST_OUTPUT) * 100}%`;
       qrContainer.replaceChildren(shown);
+      sizeNote.textContent = `Download size: ${shown.width} × ${shown.height} px`;
+      sizeNote.hidden = false;
       setScanStatus(result.status);
       lastRender = { data, logoSize: result.logoSize };
     } catch (err) {
       if (err === STALE || myToken !== renderToken) return;
       qrContainer.replaceChildren();
+      sizeNote.hidden = true;
       setScanStatus(null);
       lastRender = null;
       showToast('This content is too long to fit in a QR code');
