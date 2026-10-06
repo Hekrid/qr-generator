@@ -49,6 +49,7 @@
     --primary-hover: #333333;
     --on-primary: #ffffff;
     --danger: #c0392b;
+    --good: #1e7d3a;
     --hint-text: #8a6d00;
     --hint-bg: #fff8e1;
     --hint-border: #ffe58f;
@@ -72,6 +73,7 @@
     --primary-hover: #d6d6d6;
     --on-primary: #111111;
     --danger: #ff7a6e;
+    --good: #6fd08c;
     --hint-text: #f0cf6a;
     --hint-bg: #29230f;
     --hint-border: #4d3f12;
@@ -159,6 +161,9 @@
     font-size: 12px; color: var(--hint-text); background: var(--hint-bg); border: 1px solid var(--hint-border);
     border-radius: 8px; padding: 8px 10px; margin-top: 10px; text-align: center;
   }
+  .scan-status { font-size: 12.5px; text-align: center; margin: -12px 0 4px; color: var(--muted); line-height: 1.45; }
+  .scan-status.good { color: var(--good); }
+  .scan-status.bad { color: var(--danger); }
   .swatch-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
   .swatch { width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); padding: 0; margin: 0; }
   .type-fields { display: none; margin-top: 12px; }
@@ -477,14 +482,17 @@
       <input type="file" id="logo-input" accept="image/*">
       <button type="button" class="secondary" id="logo-remove-btn">Remove</button>
     </div>
+    <label for="logo-size-slider" class="spaced">Logo size</label>
+    <input type="range" id="logo-size-slider" min="20" max="60" step="5" value="40">
     <div class="row" style="margin-top:0;">
       <div>
-        <label class="inline-check"><input type="checkbox" id="logo-bg-toggle" checked> Logo background</label>
+        <label class="inline-check"><input type="checkbox" id="logo-bg-toggle" checked> Clear dots behind logo</label>
       </div>
       <div>
-        <label class="inline-check"><input type="checkbox" id="logo-round-toggle" checked> Logo round</label>
+        <label class="inline-check"><input type="checkbox" id="logo-round-toggle" checked> Rounded corners</label>
       </div>
     </div>
+    <p class="small-note">The logo keeps its own shape. While a logo or background image is used, error correction automatically goes up to the maximum, so about 30% of the code can be covered and still read, and the space cleared for the logo is sized to stay inside that budget. Every code with an image is test-scanned before it's shown, and the logo is made smaller if needed.</p>
   </div>
 
   <div class="design-tab-panel" id="tab-background">
@@ -502,6 +510,7 @@
   <div class="preview-col">
     <div class="step-label"><span class="num">3</span> Download</div>
     <div id="qrcode"></div>
+    <div class="scan-status" id="scan-status" hidden></div>
 
     <div class="scan-hint">Test your code with a phone camera before printing or sharing it, especially with a logo or background image.</div>
 
@@ -637,7 +646,7 @@
 
   function setOutputVisible(visible) {
     qrContainer.style.display = visible ? 'flex' : 'none';
-    document.querySelectorAll('.scan-hint, .btn-row').forEach(el => { el.style.display = visible ? '' : 'none'; });
+    document.querySelectorAll('.scan-hint, .btn-row, #scan-status').forEach(el => { el.style.display = visible ? '' : 'none'; });
   }
 
   function setBatchMode(on) {
@@ -718,6 +727,15 @@
     return textInput.value.trim() || 'https://example.com';
   }
 
+  const JSQR_URL = 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js';
+  const LOGO_MIN_SIZE = 0.2;
+  const STALE = new Error('stale');
+  const scanStatus = $('scan-status');
+  const logoSizeSlider = $('logo-size-slider');
+  let lastRender = null;
+  let preparedLogo = { key: null, url: null };
+  let decoderPromise = null;
+
   function getDesign() {
     return {
       size: parseInt(sizeSelect.value, 10),
@@ -727,11 +745,15 @@
       cornerType: cornerStyleSelect.value,
       gradient: gradientToggle.checked
         ? { type: gradientTypeSelect.value, from: gradientColor1.value, to: gradientColor2.value }
+        : null,
+      ecc: logoDataUrl || bgImageDataUrl ? 'H' : 'M',
+      logo: logoDataUrl
+        ? { size: parseInt(logoSizeSlider.value, 10) / 100, clear: logoBgToggle.checked }
         : null
     };
   }
 
-  function stylingOptions(data, design, background) {
+  function stylingOptions(data, design, background, logo) {
     const fill = () => design.gradient
       ? {
           gradient: {
@@ -744,48 +766,73 @@
           }
         }
       : { color: design.color };
-    return {
+    const options = {
       width: design.size,
       height: design.size,
       type: 'svg',
       data,
       margin: 0,
-      qrOptions: { errorCorrectionLevel: 'H' },
+      qrOptions: { errorCorrectionLevel: design.ecc },
       dotsOptions: { type: design.dotType, ...fill() },
       cornersSquareOptions: { type: design.cornerType, ...fill() },
       cornersDotOptions: { type: design.cornerType === 'square' ? 'square' : 'dot', ...fill() },
       backgroundOptions: { color: background }
     };
+    if (logo) {
+      options.image = logo.src;
+      options.imageOptions = {
+        hideBackgroundDots: logo.clear,
+        imageSize: logo.size,
+        margin: Math.max(2, Math.round(design.size * 0.012))
+      };
+    }
+    return options;
   }
 
-  function unifyGradients(svgText, size, gradientType) {
+  function postProcessSvg(svgText, design, stripImage) {
     const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-    const gradients = [
-      ...doc.getElementsByTagNameNS(SVG_NS, 'linearGradient'),
-      ...doc.getElementsByTagNameNS(SVG_NS, 'radialGradient')
-    ];
-    gradients.forEach(g => {
-      if (g.getAttribute('id') === 'background-color') return;
-      g.setAttribute('gradientUnits', 'userSpaceOnUse');
-      if (g.localName === 'radialGradient') {
-        const c = String(size / 2);
-        ['cx', 'cy', 'fx', 'fy'].forEach(a => g.setAttribute(a, c));
-        g.setAttribute('r', String(size * Math.SQRT1_2));
-      } else {
-        g.setAttribute('x1', '0');
-        g.setAttribute('y1', '0');
-        g.setAttribute('x2', String(size));
-        g.setAttribute('y2', String(size));
+    if (design.gradient) {
+      const size = design.size;
+      const gradients = [
+        ...doc.getElementsByTagNameNS(SVG_NS, 'linearGradient'),
+        ...doc.getElementsByTagNameNS(SVG_NS, 'radialGradient')
+      ];
+      gradients.forEach(g => {
+        if (g.getAttribute('id') === 'background-color') return;
+        g.setAttribute('gradientUnits', 'userSpaceOnUse');
+        if (g.localName === 'radialGradient') {
+          const c = String(size / 2);
+          ['cx', 'cy', 'fx', 'fy'].forEach(a => g.setAttribute(a, c));
+          g.setAttribute('r', String(size * Math.SQRT1_2));
+        } else {
+          g.setAttribute('x1', '0');
+          g.setAttribute('y1', '0');
+          g.setAttribute('x2', String(size));
+          g.setAttribute('y2', String(size));
+        }
+      });
+    }
+    let image = null;
+    if (stripImage) {
+      const el = doc.getElementsByTagNameNS(SVG_NS, 'image')[0];
+      if (el) {
+        image = {
+          href: el.getAttribute('href') || el.getAttributeNS('http://www.w3.org/1999/xlink', 'href'),
+          x: parseFloat(el.getAttribute('x')),
+          y: parseFloat(el.getAttribute('y')),
+          w: parseFloat(el.getAttribute('width')),
+          h: parseFloat(el.getAttribute('height'))
+        };
+        el.remove();
       }
-    });
-    return new XMLSerializer().serializeToString(doc.documentElement);
+    }
+    return { svg: new XMLSerializer().serializeToString(doc.documentElement), image };
   }
 
-  async function renderSvgString(data, design, background) {
-    const qr = new QRCodeStyling(stylingOptions(data, design, background));
+  async function rawSvg(data, design, background, logo) {
+    const qr = new QRCodeStyling(stylingOptions(data, design, background, logo));
     const blob = await qr.getRawData('svg');
-    const text = await blob.text();
-    return design.gradient ? unifyGradients(text, design.size, design.gradient.type) : text;
+    return blob.text();
   }
 
   function loadImage(src) {
@@ -802,6 +849,39 @@
     canvas.width = size;
     canvas.height = size;
     return canvas;
+  }
+
+  function roundedRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  async function getPreparedLogo() {
+    const round = logoRoundToggle.checked;
+    const key = logoDataUrl + '|' + round;
+    if (preparedLogo.key === key) return preparedLogo.url;
+    const img = await loadImage(logoDataUrl);
+    const naturalW = img.naturalWidth || 512;
+    const naturalH = img.naturalHeight || 512;
+    const scale = Math.min(1, 1024 / Math.max(naturalW, naturalH));
+    const w = Math.max(1, Math.round(naturalW * scale));
+    const h = Math.max(1, Math.round(naturalH * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (round) {
+      roundedRect(ctx, 0, 0, w, h, Math.min(w, h) * 0.18);
+      ctx.clip();
+    }
+    ctx.drawImage(img, 0, 0, w, h);
+    preparedLogo = { key, url: canvas.toDataURL('image/png') };
+    return preparedLogo.url;
   }
 
   async function svgToCanvas(svgText, size) {
@@ -837,56 +917,110 @@
     return canvas;
   }
 
-  function roundedRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
-
-  async function applyLogo(qrCanvas, design) {
-    const size = design.size;
-    const logo = await loadImage(logoDataUrl);
-    const canvas = blankCanvas(size);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(qrCanvas, 0, 0, size, size);
-
-    const logoSize = size * 0.22;
-    const pad = logoSize * 0.15;
-    const x = (size - logoSize) / 2;
-    const y = (size - logoSize) / 2;
-    const boxSize = logoSize + pad * 2;
-    const useRound = logoRoundToggle.checked;
-    const cornerRadius = useRound ? boxSize * 0.28 : 0;
-
-    if (logoBgToggle.checked) {
-      ctx.fillStyle = design.bgColor;
-      roundedRect(ctx, x - pad, y - pad, boxSize, boxSize, cornerRadius);
-      ctx.fill();
+  async function drawLogoImage(canvas, image) {
+    const img = await loadImage(image.href);
+    const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    let w = image.w;
+    let h = image.w / ratio;
+    if (h > image.h) {
+      h = image.h;
+      w = image.h * ratio;
     }
-
-    ctx.save();
-    roundedRect(ctx, x, y, logoSize, logoSize, useRound ? cornerRadius * 0.7 : 0);
-    ctx.clip();
-    const ratio = logo.naturalWidth / logo.naturalHeight;
-    let drawW = logoSize;
-    let drawH = logoSize;
-    if (ratio > 1) drawH = logoSize / ratio;
-    else if (ratio < 1) drawW = logoSize * ratio;
-    ctx.drawImage(logo, x + (logoSize - drawW) / 2, y + (logoSize - drawH) / 2, drawW, drawH);
-    ctx.restore();
-    return canvas;
+    canvas.getContext('2d').drawImage(img, image.x + (image.w - w) / 2, image.y + (image.h - h) / 2, w, h);
   }
 
-  async function composeQr(data, design) {
-    const svg = await renderSvgString(data, design, bgImageDataUrl ? '#ffffff' : design.bgColor);
+  async function composeQr(data, design, logoSize) {
+    const logo = design.logo
+      ? { src: await getPreparedLogo(), size: logoSize ?? design.logo.size, clear: design.logo.clear }
+      : null;
+    const raw = await rawSvg(data, design, bgImageDataUrl ? '#ffffff' : design.bgColor, logo);
+    const { svg, image } = postProcessSvg(raw, design, true);
     let canvas = await svgToCanvas(svg, design.size);
     if (bgImageDataUrl) canvas = await applyBackgroundImage(canvas, design);
-    if (logoDataUrl) canvas = await applyLogo(canvas, design);
+    if (image) await drawLogoImage(canvas, image);
     return canvas;
+  }
+
+  function loadDecoder() {
+    if (window.jsQR) return Promise.resolve(window.jsQR);
+    if (!decoderPromise) {
+      decoderPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = JSQR_URL;
+        script.onload = () => (window.jsQR ? resolve(window.jsQR) : reject(new Error('Decoder missing')));
+        script.onerror = () => {
+          decoderPromise = null;
+          reject(new Error('Decoder failed to load'));
+        };
+        document.head.appendChild(script);
+      });
+    }
+    return decoderPromise;
+  }
+
+  function passesTestScan(decode, canvas) {
+    const target = 300;
+    const quiet = canvas.width * 0.08;
+    const inner = target * canvas.width / (canvas.width + quiet * 2);
+    const offset = (target - inner) / 2;
+    const test = blankCanvas(target);
+    const ctx = test.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, target, target);
+    ctx.filter = 'blur(1.2px)';
+    ctx.drawImage(canvas, offset, offset, inner, inner);
+    ctx.filter = 'none';
+    const pixels = ctx.getImageData(0, 0, target, target);
+    const d = pixels.data;
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = d[i] * 0.7 + 40;
+      d[i + 1] = d[i + 1] * 0.7 + 40;
+      d[i + 2] = d[i + 2] * 0.7 + 40;
+    }
+    return Boolean(decode(d, target, target));
+  }
+
+  async function composeVerified(data, design, isStale = () => false) {
+    const canvas = await composeQr(data, design);
+    if (isStale()) throw STALE;
+    const logoSize = design.logo ? design.logo.size : null;
+    if (!design.logo && !bgImageDataUrl) return { canvas, status: null, logoSize };
+
+    let decode;
+    try {
+      decode = await loadDecoder();
+    } catch (err) {
+      return { canvas, status: 'unknown', logoSize };
+    }
+    if (isStale()) throw STALE;
+    if (passesTestScan(decode, canvas)) return { canvas, status: 'good', logoSize };
+
+    if (design.logo) {
+      for (let size = Math.round(design.logo.size * 100) - 5; size >= LOGO_MIN_SIZE * 100; size -= 5) {
+        const smaller = await composeQr(data, design, size / 100);
+        if (isStale()) throw STALE;
+        if (passesTestScan(decode, smaller)) return { canvas: smaller, status: 'shrunk', logoSize: size / 100 };
+      }
+    }
+    return { canvas, status: 'bad', logoSize };
+  }
+
+  const SCAN_MESSAGES = {
+    good: ['good', '✓ Test scan passed'],
+    shrunk: ['good', '✓ Test scan passed — the logo was made a little smaller so the code stays readable'],
+    bad: ['bad', '✗ This code failed the test scan. Try a smaller logo, stronger colors, or a higher background fade.'],
+    unknown: ['', "Couldn't run the test scan here — check the code with your phone."]
+  };
+
+  function setScanStatus(status) {
+    if (!status) {
+      scanStatus.hidden = true;
+      return;
+    }
+    const [kind, text] = SCAN_MESSAGES[status];
+    scanStatus.className = 'scan-status' + (kind ? ' ' + kind : '');
+    scanStatus.textContent = text;
+    scanStatus.hidden = false;
   }
 
   async function generateQR() {
@@ -894,16 +1028,22 @@
     const data = buildPayload();
     if (!data) {
       qrContainer.replaceChildren();
+      setScanStatus(null);
+      lastRender = null;
       return;
     }
     try {
-      const canvas = await composeQr(data, getDesign());
-      if (myToken === renderToken) qrContainer.replaceChildren(canvas);
+      const result = await composeVerified(data, getDesign(), () => myToken !== renderToken);
+      if (myToken !== renderToken) return;
+      qrContainer.replaceChildren(result.canvas);
+      setScanStatus(result.status);
+      lastRender = { data, logoSize: result.logoSize };
     } catch (err) {
-      if (myToken === renderToken) {
-        qrContainer.replaceChildren();
-        showToast('This content is too long to fit in a QR code');
-      }
+      if (err === STALE || myToken !== renderToken) return;
+      qrContainer.replaceChildren();
+      setScanStatus(null);
+      lastRender = null;
+      showToast('This content is too long to fit in a QR code');
     }
   }
 
@@ -935,10 +1075,17 @@
     if (!data) { showToast('Nothing to download yet'); return; }
     const design = getDesign();
     try {
-      const svg = await renderSvgString(data, design, design.bgColor);
+      const logo = design.logo
+        ? {
+            src: await getPreparedLogo(),
+            size: lastRender && lastRender.data === data && lastRender.logoSize ? lastRender.logoSize : design.logo.size,
+            clear: design.logo.clear
+          }
+        : null;
+      const { svg } = postProcessSvg(await rawSvg(data, design, design.bgColor, logo), design, false);
       triggerDownload(new Blob([svg], { type: 'image/svg+xml' }), 'qrcode.svg');
       saveToHistory(data);
-      if (logoDataUrl || bgImageDataUrl) showToast("The SVG doesn't include the logo or background image — use PNG for those");
+      if (bgImageDataUrl) showToast("The SVG doesn't include the background image — use PNG for that");
     } catch (err) {
       showToast('Could not create the SVG');
     }
@@ -1357,6 +1504,12 @@
     generateQR();
   });
 
+  let logoSizeDebounce = null;
+  logoSizeSlider.addEventListener('input', () => {
+    clearTimeout(logoSizeDebounce);
+    logoSizeDebounce = setTimeout(generateQR, 80);
+  });
+
   let washDebounce = null;
   washSlider.addEventListener('input', () => {
     clearTimeout(washDebounce);
@@ -1374,11 +1527,13 @@
     const zip = new JSZip();
     const design = getDesign();
     let failed = 0;
+    let unreadable = 0;
 
     for (let i = 0; i < lines.length; i++) {
       try {
-        const canvas = await composeQr(lines[i], design);
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const result = await composeVerified(lines[i], design);
+        if (result.status === 'bad') unreadable++;
+        const blob = await new Promise(resolve => result.canvas.toBlob(resolve, 'image/png'));
         const safeName = `qr-${i + 1}-${lines[i].replace(/[^a-z0-9]/gi, '_').slice(0, 24)}.png`;
         zip.file(safeName, blob);
       } catch (err) {
@@ -1389,7 +1544,10 @@
     if (failed < lines.length) {
       triggerDownload(await zip.generateAsync({ type: 'blob' }), 'qr-codes.zip');
     }
-    if (failed > 0) showToast(`${failed} line${failed === 1 ? ' was' : 's were'} too long and skipped`);
+    const notes = [];
+    if (failed > 0) notes.push(`${failed} line${failed === 1 ? ' was' : 's were'} too long and skipped`);
+    if (unreadable > 0) notes.push(`${unreadable} code${unreadable === 1 ? '' : 's'} failed the test scan`);
+    if (notes.length) showToast(notes.join('; '));
 
     batchGenerateBtn.textContent = 'Generate ZIP';
     batchGenerateBtn.disabled = false;
