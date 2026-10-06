@@ -4,151 +4,268 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Free QR code generator — no ads, no tracking</title>
-<meta name="description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no account, no tracking. Add a logo or background image and download as PNG or SVG.">
+<meta name="description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no tracking, no account needed. Add a logo or background image and download as PNG or SVG.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='16' fill='%231a1a1a'/%3E%3Crect x='18' y='18' width='24' height='24' fill='white'/%3E%3Crect x='58' y='18' width='24' height='24' fill='white'/%3E%3Crect x='18' y='58' width='24' height='24' fill='white'/%3E%3Crect x='58' y='58' width='10' height='10' fill='white'/%3E%3Crect x='72' y='58' width='10' height='10' fill='white'/%3E%3Crect x='58' y='72' width='10' height='10' fill='white'/%3E%3Crect x='72' y='72' width='10' height='10' fill='white'/%3E%3C/svg%3E">
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="Free QR code generator — no ads, no tracking">
-<meta property="og:description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no account, no tracking.">
+<meta property="og:description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no tracking, no account needed.">
 <meta property="og:image" content="https://hekrid.github.io/qr-generator/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Free QR code generator — no ads, no tracking">
-<meta name="twitter:description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no account, no tracking.">
+<meta name="twitter:description" content="Create free QR codes for links, Wi-Fi, contact cards, email, and phone numbers. No ads, no tracking, no account needed.">
 
+<script>
+  (function () {
+    var theme = null;
+    try { theme = localStorage.getItem('qr_theme'); } catch (e) {}
+    if (theme !== 'light' && theme !== 'dark') {
+      theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://unpkg.com/qr-code-styling@1.6.0-rc.1/lib/qr-code-styling.js"></script>
 <style>
+  :root {
+    color-scheme: light;
+    --page: #f5f5f7;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --text-2: #333333;
+    --muted: #666666;
+    --faint: #8a8a8a;
+    --border: #dddddd;
+    --border-soft: #eeeeee;
+    --field: #ffffff;
+    --soft: #f0f0f0;
+    --soft-hover: #e5e5e5;
+    --panel: #fafafa;
+    --primary: #1a1a1a;
+    --primary-hover: #333333;
+    --on-primary: #ffffff;
+    --danger: #c0392b;
+    --hint-text: #8a6d00;
+    --hint-bg: #fff8e1;
+    --hint-border: #ffe58f;
+    --shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0f1012;
+    --card: #1a1b1e;
+    --text: #f1f1f1;
+    --text-2: #d4d4d4;
+    --muted: #a3a3a3;
+    --faint: #7d7d7d;
+    --border: #38393d;
+    --border-soft: #2a2b2f;
+    --field: #222327;
+    --soft: #2a2b2f;
+    --soft-hover: #35363b;
+    --panel: #1f2023;
+    --primary: #f1f1f1;
+    --primary-hover: #d6d6d6;
+    --on-primary: #111111;
+    --danger: #ff7a6e;
+    --hint-text: #f0cf6a;
+    --hint-bg: #29230f;
+    --hint-border: #4d3f12;
+    --shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+  }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f5f5f7;
+    background: var(--page);
+    color: var(--text);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
     margin: 0;
     padding: 40px 16px;
+    transition: background 0.2s;
   }
   .card {
-    background: #fff;
+    position: relative;
+    background: var(--card);
     border-radius: 16px;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    box-shadow: var(--shadow);
     padding: 32px;
     width: 100%;
-    max-width: 420px;
+    max-width: 780px;
   }
+  .topbar { display: flex; justify-content: flex-end; gap: 8px; margin: -14px -14px 6px 0; }
+  .ghost-btn {
+    width: auto; margin: 0; padding: 7px 12px; font-size: 13px; font-weight: 600;
+    background: var(--soft); color: var(--text); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ghost-btn:hover { background: var(--soft-hover); }
+  .ghost-btn.icon { padding: 7px 9px; }
+  .ghost-btn svg { width: 16px; height: 16px; display: block; }
   h1 { font-size: 22px; margin: 0 0 4px; text-align: center; }
-  p.subtitle { text-align: center; color: #666; font-size: 14px; margin: 0 0 24px; }
-  label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
-  textarea, input[type="text"] {
-    width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px;
+  p.subtitle { text-align: center; color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+  p.intro { font-size: 13px; color: var(--faint); text-align: center; margin: -14px 0 20px; line-height: 1.5; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+  label.inline-check { display: flex; align-items: center; gap: 6px; font-weight: 400; margin-top: 10px; }
+  label.inline-check input { width: auto; margin: 0; }
+  .spaced { margin-top: 10px; }
+  textarea, input[type="text"], input[type="password"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
     font-size: 14px; resize: vertical; min-height: 44px; font-family: inherit;
+    background: var(--field); color: var(--text);
   }
   .row { display: flex; gap: 12px; margin-top: 14px; }
   .row > div { flex: 1; }
   select, input[type="color"], input[type="file"] {
-    width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+    background: var(--field); color: var(--text);
   }
   input[type="color"] { height: 38px; padding: 4px; }
+  input[type="range"] { width: 100%; }
   #qrcode { display: flex; justify-content: center; margin: 24px 0; min-height: 200px; align-items: center; }
-  #qrcode img, #qrcode canvas { border-radius: 8px; }
+  #qrcode canvas { border-radius: 8px; max-width: 100%; height: auto; }
   button {
-    width: 100%; padding: 12px; border: none; border-radius: 8px; background: #1a1a1a;
-    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px;
+    width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--primary);
+    color: var(--on-primary); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 6px;
+    font-family: inherit;
   }
-  button:hover { background: #333; }
-  button.secondary { background: #f0f0f0; color: #1a1a1a; }
-  button.secondary:hover { background: #e5e5e5; }
+  button:hover { background: var(--primary-hover); }
+  button:disabled { opacity: 0.6; cursor: default; }
+  button.secondary { background: var(--soft); color: var(--text); }
+  button.secondary:hover { background: var(--soft-hover); }
+  button.small { width: auto; padding: 6px 10px; margin: 0; font-size: 13px; }
+  button.danger-text { color: var(--danger); }
+  .link-btn {
+    width: auto; padding: 0; margin: 0; background: none; color: inherit; font-size: inherit;
+    font-weight: 700; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .link-btn:hover { background: none; opacity: 0.8; }
   .btn-row { display: flex; gap: 8px; margin-top: 6px; }
   .btn-row button { margin-top: 0; }
-  .footer-note { text-align: center; font-size: 12px; color: #999; margin-top: 20px; }
-  .field-error {
-    font-size: 12px; color: #c0392b; margin-top: 4px; display: none;
-  }
+  .file-row { display: flex; gap: 8px; }
+  .file-row input { flex: 1; }
+  .file-row button { width: auto; padding: 8px 12px; margin-top: 0; }
+  .footer-note { text-align: center; font-size: 12px; color: var(--faint); margin-top: 20px; }
+  .field-error { font-size: 12px; color: var(--danger); margin-top: 4px; display: none; }
   .field-error.show { display: block; }
-  input.invalid, textarea.invalid { border-color: #c0392b; }
-
-  @media (max-width: 480px) {
-    body { padding: 16px 8px; align-items: stretch; }
-    .card { padding: 20px 16px; border-radius: 12px; max-width: 100%; }
-    h1 { font-size: 19px; }
-    
-    textarea, input[type="text"], select { font-size: 16px; }
-    .row { flex-direction: column; gap: 10px; }
-    .btn-row { flex-direction: column; }
-  }
+  input.invalid, textarea.invalid { border-color: var(--danger); }
   .scan-hint {
-    font-size: 12px; color: #8a6d00; background: #fff8e1; border: 1px solid #ffe58f;
+    font-size: 12px; color: var(--hint-text); background: var(--hint-bg); border: 1px solid var(--hint-border);
     border-radius: 8px; padding: 8px 10px; margin-top: 10px; text-align: center;
   }
   .swatch-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-  .swatch {
-    width: 32px; height: 32px; border-radius: 6px; border: 1px solid #ddd; cursor: pointer;
-    padding: 0;
-  }
-  .type-fields { display: none; }
+  .swatch { width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); padding: 0; margin: 0; }
+  .type-fields { display: none; margin-top: 12px; }
   .type-fields.active { display: block; }
+  .batch-box {
+    display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; cursor: pointer; margin-bottom: 10px; user-select: none; font-size: 13px; color: var(--text-2);
+  }
+  .batch-box input { width: auto; margin: 0; pointer-events: none; }
   .history-row { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; padding-bottom: 4px; }
   .history-item {
-    flex: 0 0 auto; width: 52px; height: 52px; border: 1px solid #ddd; border-radius: 8px;
-    cursor: pointer; padding: 2px; background: #fff;
+    flex: 0 0 auto; width: 52px; height: 52px; border: 1px solid var(--border); border-radius: 8px;
+    padding: 2px; margin: 0; background: var(--field);
   }
+  .history-item:hover { background: var(--soft); }
   .history-item img { width: 100%; height: 100%; object-fit: contain; }
   .toast {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: #1a1a1a; color: #fff; padding: 8px 16px; border-radius: 8px;
-    font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    background: var(--primary); color: var(--on-primary); padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100% - 32px);
   }
   .toast.show { opacity: 1; }
-
   .step-label {
     display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700;
-    color: #1a1a1a; margin: 22px 0 10px;
+    color: var(--text); margin: 22px 0 10px;
   }
   .step-label .num {
-    width: 22px; height: 22px; border-radius: 50%; background: #1a1a1a; color: #fff;
+    width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: var(--on-primary);
     font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .layout { display: flex; gap: 28px; align-items: flex-start; margin-top: 10px; }
   .form-col { flex: 1; min-width: 0; }
   .preview-col {
     width: 300px; flex-shrink: 0; position: sticky; top: 20px;
-    border: 1px solid #eee; border-radius: 14px; padding: 18px; background: #fafafa;
+    border: 1px solid var(--border-soft); border-radius: 14px; padding: 18px; background: var(--panel);
   }
+  .preview-col .step-label { margin-top: 0; }
   .type-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .type-chip {
-    border: 1px solid #ddd; background: #fff; border-radius: 8px; padding: 8px 12px;
-    font-size: 13px; cursor: pointer; color: #333; width: auto; margin-top: 0;
+    border: 1px solid var(--border); background: var(--field); border-radius: 8px; padding: 8px 12px;
+    font-size: 13px; font-weight: 500; color: var(--text-2); width: auto; margin-top: 0;
   }
-  .type-chip:hover { background: #f5f5f5; }
-  .type-chip.active { border-color: #1a1a1a; background: #1a1a1a; color: #fff; font-weight: 600; }
-  #type-select { display: none; }
-
-  .design-tabs { display: flex; gap: 6px; border-bottom: 1px solid #eee; margin-top: 4px; }
+  .type-chip:hover { background: var(--soft); }
+  .type-chip.active { border-color: var(--primary); background: var(--primary); color: var(--on-primary); font-weight: 600; }
+  .design-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border-soft); margin-top: 4px; }
   .design-tab {
-    background: none; border: none; padding: 8px 4px; font-size: 13px; font-weight: 600;
-    color: #888; cursor: pointer; width: auto; margin-top: 0; border-bottom: 2px solid transparent;
+    background: none; border: none; border-radius: 0; padding: 8px 4px; font-size: 13px; font-weight: 600;
+    color: var(--faint); width: auto; margin-top: 0; border-bottom: 2px solid transparent;
   }
-  .design-tab.active { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+  .design-tab:hover { background: none; color: var(--text); }
+  .design-tab.active { color: var(--text); border-bottom-color: var(--text); }
   .design-tab-panel { display: none; padding-top: 14px; }
   .design-tab-panel.active { display: block; }
+  .collapsible { margin-top: 12px; border-top: 1px solid var(--border-soft); padding-top: 12px; }
+  .small-note { font-size: 12px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
+  .warn-text {
+    color: var(--danger); font-size: 12.5px; line-height: 1.55; margin-top: 10px;
+    border-left: 3px solid var(--danger); padding: 2px 0 2px 10px;
+  }
+  .warn-text p { margin: 0 0 6px; }
+  .warn-text p:last-child { margin-bottom: 0; }
+  .account-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    font-size: 13px; color: var(--text-2); background: var(--soft); border-radius: 8px; padding: 9px 12px; margin-bottom: 12px;
+  }
+  .auth-panel { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--panel); }
+  .auth-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .auth-tabs button { flex: 1; margin: 0; padding: 8px; font-size: 13px; background: var(--soft); color: var(--text); }
+  .auth-tabs button.active { background: var(--primary); color: var(--on-primary); }
+  .result-box { margin-top: 10px; font-size: 13px; color: var(--text-2); background: var(--soft); border-radius: 8px; padding: 10px; word-break: break-all; }
+  .section-label { margin-top: 18px; }
+  .link-list { font-size: 13px; }
+  .link-row { border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px; margin-top: 6px; }
+  .link-url { font-weight: 600; word-break: break-all; }
+  .link-row input { margin-top: 6px; }
+  .link-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .empty-note { color: var(--faint); }
+  .coffee-btn { background: #ffdd00; color: #1a1a1a; }
+  .coffee-btn:hover { background: #f2d000; }
+  .coffee-link { display: block; text-decoration: none; margin-top: 20px; }
 
   @media (max-width: 760px) {
     .layout { flex-direction: column; }
     .preview-col { width: 100%; position: static; }
   }
+  @media (max-width: 480px) {
+    body { padding: 16px 8px; align-items: stretch; }
+    .card { padding: 20px 16px; border-radius: 12px; }
+    .topbar { margin: -6px -6px 6px 0; }
+    h1 { font-size: 19px; }
+    textarea, input[type="text"], input[type="password"], select { font-size: 16px; }
+    .row { flex-direction: column; gap: 10px; }
+    .btn-row { flex-direction: column; }
+  }
 </style>
 </head>
 <body>
 
-<div class="card" style="max-width: 780px;">
+<div class="card">
+  <div class="topbar">
+    <button type="button" class="ghost-btn" id="account-chip">Sign in</button>
+    <button type="button" class="ghost-btn icon" id="theme-toggle" aria-label="Switch to dark mode"></button>
+  </div>
   <h1>QR code generator</h1>
-  <p class="subtitle">No ads. No account. No tracking.</p>
-  <p style="font-size:13px; color:#888; text-align:center; margin:-14px 0 20px; line-height:1.5;">
-    Make QR codes for links, Wi-Fi, contacts, email, or phone numbers. Add a logo or background image if you want. Download as PNG or SVG. Everything runs in your browser — nothing is uploaded anywhere.
+  <p class="subtitle">No ads. No tracking. No account needed.</p>
+  <p class="intro">
+    Make QR codes for links, Wi-Fi, contacts, email, or phone numbers. Add a logo or background image if you want. Download as PNG or SVG. Everything runs in your browser — only dynamic links and optional accounts are stored on our server.
   </p>
 
   <div class="step-label"><span class="num">1</span> Choose a type</div>
@@ -160,24 +277,16 @@
     <button type="button" class="type-chip" data-type="phone">Phone</button>
     <button type="button" class="type-chip" data-type="dynamic">Dynamic link</button>
   </div>
-  <select id="type-select">
-    <option value="text" selected>URL / text</option>
-    <option value="wifi">Wi-Fi</option>
-    <option value="vcard">Contact card</option>
-    <option value="email">Email</option>
-    <option value="phone">Phone number</option>
-    <option value="dynamic">Dynamic link (editable later)</option>
-  </select>
 
   <div class="layout">
   <div class="form-col">
 
   <div class="step-label"><span class="num">2</span> Enter content &amp; design</div>
 
-  <div class="type-fields active" id="fields-text" style="margin-top:12px;">
-    <div id="batch-mode-box" style="display:flex; align-items:center; gap:8px; border:1px solid #ddd; border-radius:8px; padding:8px 12px; cursor:pointer; margin-bottom:10px; user-select:none;">
-      <input type="checkbox" id="batch-mode-checkbox" style="width:auto; margin:0; pointer-events:none;">
-      <span style="font-size:13px; color:#333;">Batch mode — generate a ZIP from a list of links/text</span>
+  <div class="type-fields active" id="fields-text">
+    <div class="batch-box" id="batch-mode-box">
+      <input type="checkbox" id="batch-mode-checkbox">
+      <span>Batch mode — generate a ZIP from a list of links/text</span>
     </div>
 
     <div id="single-text-field">
@@ -185,21 +294,21 @@
       <textarea id="text-input" placeholder="https://example.com">https://example.com</textarea>
     </div>
 
-    <div id="batch-text-field" style="display:none;">
+    <div id="batch-text-field" hidden>
       <label for="batch-input">One URL or text per line</label>
       <textarea id="batch-input" placeholder="https://example.com/1&#10;https://example.com/2&#10;https://example.com/3" style="min-height:110px;"></textarea>
       <div class="field-error" id="batch-error">Add at least one line to generate a batch.</div>
-      <button type="button" id="batch-generate-btn" style="margin-top:8px;">Generate ZIP</button>
+      <button type="button" id="batch-generate-btn" class="spaced">Generate ZIP</button>
     </div>
   </div>
 
-  <div class="type-fields" id="fields-wifi" style="margin-top:12px;">
+  <div class="type-fields" id="fields-wifi">
     <label for="wifi-ssid">Network name (SSID)</label>
     <input type="text" id="wifi-ssid" placeholder="My WiFi">
     <div class="field-error" id="wifi-ssid-error">Enter a network name.</div>
-    <label for="wifi-password" style="margin-top:10px;">Password</label>
+    <label for="wifi-password" class="spaced">Password</label>
     <input type="text" id="wifi-password" placeholder="password">
-    <label for="wifi-encryption" style="margin-top:10px;">Encryption</label>
+    <label for="wifi-encryption" class="spaced">Encryption</label>
     <select id="wifi-encryption">
       <option value="WPA" selected>WPA/WPA2</option>
       <option value="WEP">WEP</option>
@@ -207,49 +316,73 @@
     </select>
   </div>
 
-  <div class="type-fields" id="fields-vcard" style="margin-top:12px;">
+  <div class="type-fields" id="fields-vcard">
     <label for="vcard-name">Full name</label>
     <input type="text" id="vcard-name" placeholder="Jane Doe">
-    <label for="vcard-phone" style="margin-top:10px;">Phone</label>
+    <label for="vcard-phone" class="spaced">Phone</label>
     <input type="text" id="vcard-phone" placeholder="+1 555 000 0000">
-    <label for="vcard-email" style="margin-top:10px;">Email</label>
+    <label for="vcard-email" class="spaced">Email</label>
     <input type="text" id="vcard-email" placeholder="jane@example.com">
-    <label for="vcard-org" style="margin-top:10px;">Organization (optional)</label>
+    <label for="vcard-org" class="spaced">Organization (optional)</label>
     <input type="text" id="vcard-org" placeholder="Company name">
   </div>
 
-  <div class="type-fields" id="fields-email" style="margin-top:12px;">
+  <div class="type-fields" id="fields-email">
     <label for="email-address">Email address</label>
     <input type="text" id="email-address" placeholder="jane@example.com">
     <div class="field-error" id="email-address-error">Enter a valid email address.</div>
-    <label for="email-subject" style="margin-top:10px;">Subject (optional)</label>
+    <label for="email-subject" class="spaced">Subject (optional)</label>
     <input type="text" id="email-subject" placeholder="Subject">
-    <label for="email-body" style="margin-top:10px;">Message (optional)</label>
+    <label for="email-body" class="spaced">Message (optional)</label>
     <textarea id="email-body" placeholder="Message"></textarea>
   </div>
 
-  <div class="type-fields" id="fields-phone" style="margin-top:12px;">
+  <div class="type-fields" id="fields-phone">
     <label for="phone-number">Phone number</label>
     <input type="text" id="phone-number" placeholder="+1 555 000 0000">
     <div class="field-error" id="phone-number-error">Enter a phone number (digits only, optional +).</div>
   </div>
 
-  <div class="type-fields" id="fields-dynamic" style="margin-top:12px;">
-    <div id="worker-url-field" style="display:none;">
-      <label for="worker-url-input">Backend URL (one-time setup)</label>
-      <input type="text" id="worker-url-input" placeholder="https://your-worker.workers.dev">
+  <div class="type-fields" id="fields-dynamic">
+    <div class="account-bar" id="account-bar" hidden>
+      <span>Signed in as <strong id="account-name"></strong> — your links are saved to your account.</span>
+      <button type="button" class="link-btn" id="logout-btn">Log out</button>
     </div>
-    <div class="field-error" id="worker-url-error">Set your deployed backend URL first — see the Deploy guide.</div>
 
-    <label for="dynamic-destination" style="margin-top:10px;">Destination URL</label>
+    <label for="dynamic-destination">Destination URL</label>
     <input type="text" id="dynamic-destination" placeholder="https://example.com">
     <div class="field-error" id="dynamic-destination-error">Enter a valid http(s) URL.</div>
 
-    <button type="button" id="dynamic-create-btn" style="margin-top:10px;">Create dynamic link</button>
-    <div id="dynamic-result" style="display:none; margin-top:10px; font-size:13px; color:#333; background:#f7f7f7; border-radius:8px; padding:10px;"></div>
+    <button type="button" id="dynamic-create-btn" class="spaced">Create dynamic link</button>
 
-    <label style="margin-top:16px;">Your dynamic links</label>
-    <div id="dynamic-list" style="font-size:13px;"></div>
+    <div class="warn-text" id="dynamic-warning">
+      <p><strong>Without an account, this link can only be edited from this browser.</strong> The key that lets you change where it points is saved only here, on this device.</p>
+      <p>If you clear your browser data, use private browsing, or switch to another device or browser, that key is gone for good. The QR code keeps working, but it stays stuck on its current destination and can no longer be edited or deleted.</p>
+      <p><button type="button" class="link-btn" data-open-auth="register">Create a free account</button> or <button type="button" class="link-btn" data-open-auth="login">sign in</button> to keep your links safe and edit them from anywhere. No email needed.</p>
+    </div>
+
+    <form class="auth-panel" id="auth-panel" hidden novalidate>
+      <div class="auth-tabs">
+        <button type="button" data-auth-mode="login" class="active">Sign in</button>
+        <button type="button" data-auth-mode="register">Create account</button>
+      </div>
+      <label for="auth-username">Username</label>
+      <input type="text" id="auth-username" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label for="auth-password" class="spaced">Password</label>
+      <input type="password" id="auth-password" autocomplete="current-password">
+      <div id="auth-confirm-wrap" hidden>
+        <label for="auth-password-2" class="spaced">Confirm password</label>
+        <input type="password" id="auth-password-2" autocomplete="new-password">
+      </div>
+      <div class="field-error" id="auth-error"></div>
+      <button type="submit" id="auth-submit-btn" class="spaced">Sign in</button>
+      <p class="small-note">No email or personal details are collected. That also means a forgotten password can't be recovered, so keep it somewhere safe. Links you made in this browser are moved into your account when you sign in.</p>
+    </form>
+
+    <div class="result-box" id="dynamic-result" hidden></div>
+
+    <label class="section-label">Your dynamic links</label>
+    <div class="link-list" id="dynamic-list"></div>
   </div>
 
   <div class="row">
@@ -271,13 +404,11 @@
     <button type="button" class="design-tab" data-tab="background">Background</button>
   </div>
 
-  <div id="design-panel">
-
   <div class="design-tab-panel active" id="tab-shape">
-    <label style="margin-top:10px;">Pattern style</label>
-    <div class="row">
+    <label class="spaced">Pattern style</label>
+    <div class="row" style="margin-top:0;">
       <div>
-        <select id="dot-style-select">
+        <select id="dot-style-select" aria-label="Dot style">
           <option value="square">Square</option>
           <option value="dots" selected>Dots</option>
           <option value="rounded">Rounded</option>
@@ -287,7 +418,7 @@
         </select>
       </div>
       <div>
-        <select id="corner-style-select">
+        <select id="corner-style-select" aria-label="Corner style">
           <option value="square">Square corners</option>
           <option value="dot">Dot corners</option>
           <option value="extra-rounded" selected>Rounded corners</option>
@@ -308,7 +439,7 @@
       </div>
     </div>
 
-    <label style="margin-top:10px;">Quick color pairs</label>
+    <label class="spaced">Quick color pairs</label>
     <div class="swatch-row" id="preset-row">
       <button type="button" class="swatch" data-pattern="#000000" data-bg="#ffffff" style="background:linear-gradient(135deg,#000 50%,#fff 50%);" title="Black / white"></button>
       <button type="button" class="swatch" data-pattern="#0c3c60" data-bg="#eaf3fb" style="background:linear-gradient(135deg,#0c3c60 50%,#eaf3fb 50%);" title="Navy / ice blue"></button>
@@ -317,542 +448,393 @@
       <button type="button" class="swatch" data-pattern="#2c2c2a" data-bg="#f1efe8" style="background:linear-gradient(135deg,#2c2c2a 50%,#f1efe8 50%);" title="Charcoal / bone"></button>
     </div>
 
-    <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:14px;">
-      <input type="checkbox" id="gradient-toggle" style="width:auto;">
+    <label class="inline-check" style="margin-top:14px;">
+      <input type="checkbox" id="gradient-toggle">
       Use gradient instead of solid pattern color
     </label>
-    <div class="row" id="gradient-colors" style="display:none;">
-      <div>
-        <label for="gradient-color-1">Gradient start</label>
-        <input type="color" id="gradient-color-1" value="#6a11cb">
-      </div>
-      <div>
-        <label for="gradient-color-2">Gradient end</label>
-        <input type="color" id="gradient-color-2" value="#2575fc">
+    <div id="gradient-options" hidden>
+      <label for="gradient-type-select" class="spaced">Gradient style</label>
+      <select id="gradient-type-select">
+        <option value="linear" selected>Diagonal (top-left to bottom-right)</option>
+        <option value="radial">Radial (center to edges)</option>
+      </select>
+      <div class="row">
+        <div>
+          <label for="gradient-color-1" id="gradient-label-1">Gradient start</label>
+          <input type="color" id="gradient-color-1" value="#6a11cb">
+        </div>
+        <div>
+          <label for="gradient-color-2" id="gradient-label-2">Gradient end</label>
+          <input type="color" id="gradient-color-2" value="#2575fc">
+        </div>
       </div>
     </div>
   </div>
 
   <div class="design-tab-panel" id="tab-logo">
     <label for="logo-input">Center logo (optional)</label>
-    <div style="display:flex; gap:8px;">
-      <input type="file" id="logo-input" accept="image/*" style="flex:1;">
-      <button type="button" class="secondary" id="logo-remove-btn" style="width:auto; padding:8px 12px; margin-top:0;">Remove</button>
+    <div class="file-row">
+      <input type="file" id="logo-input" accept="image/*">
+      <button type="button" class="secondary" id="logo-remove-btn">Remove</button>
     </div>
-    <div class="row">
+    <div class="row" style="margin-top:0;">
       <div>
-        <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
-          <input type="checkbox" id="logo-bg-toggle" checked style="width:auto;">
-          Logo background
-        </label>
+        <label class="inline-check"><input type="checkbox" id="logo-bg-toggle" checked> Logo background</label>
       </div>
       <div>
-        <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin-top:10px;">
-          <input type="checkbox" id="logo-round-toggle" checked style="width:auto;">
-          Logo round
-        </label>
+        <label class="inline-check"><input type="checkbox" id="logo-round-toggle" checked> Logo round</label>
       </div>
     </div>
   </div>
 
   <div class="design-tab-panel" id="tab-background">
     <label for="bg-image-input">Background image (optional)</label>
-    <div style="display:flex; gap:8px;">
-      <input type="file" id="bg-image-input" accept="image/*" style="flex:1;">
-      <button type="button" class="secondary" id="bg-image-remove-btn" style="width:auto; padding:8px 12px; margin-top:0;">Remove</button>
+    <div class="file-row">
+      <input type="file" id="bg-image-input" accept="image/*">
+      <button type="button" class="secondary" id="bg-image-remove-btn">Remove</button>
     </div>
-
-    <label for="wash-slider" style="margin-top:10px;">Background fade (higher = more scannable)</label>
-    <input type="range" id="wash-slider" min="30" max="90" value="65" style="width:100%;">
-  </div>
-
+    <label for="wash-slider" class="spaced">Background fade (higher = more scannable)</label>
+    <input type="range" id="wash-slider" min="30" max="90" value="65">
   </div>
 
   </div>
 
   <div class="preview-col">
-  <div class="step-label" style="margin-top:0;"><span class="num">3</span> Download</div>
-  <div id="qrcode"></div>
+    <div class="step-label"><span class="num">3</span> Download</div>
+    <div id="qrcode"></div>
 
-  <div class="scan-hint">Test your code with a phone camera before printing or sharing it, especially with a logo or background image.</div>
+    <div class="scan-hint">Test your code with a phone camera before printing or sharing it, especially with a logo or background image.</div>
 
-  <div class="btn-row">
-    <button id="download-btn">Download PNG</button>
-    <button class="secondary" id="download-svg-btn">Download SVG</button>
-  </div>
-  <div class="btn-row">
-    <button class="secondary" id="copy-btn">Copy to clipboard</button>
-  </div>
-  <div class="btn-row">
-    <button class="secondary" id="save-history-btn">Save to recent</button>
-  </div>
-  </div>
-
+    <div class="btn-row">
+      <button type="button" id="download-btn">Download PNG</button>
+      <button type="button" class="secondary" id="download-svg-btn">Download SVG</button>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="secondary" id="copy-btn">Copy to clipboard</button>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="secondary" id="save-history-btn">Save to recent</button>
+    </div>
   </div>
 
-  <label style="margin-top:16px;">Recent codes</label>
+  </div>
+
+  <label class="section-label">Recent codes</label>
   <div class="history-row" id="history-row"></div>
 
   <button type="button" class="secondary" id="template-toggle" style="margin-top:16px;">Print templates ▾</button>
-  <div id="template-panel" style="display:none; margin-top:12px; border-top:1px solid #eee; padding-top:12px;">
+  <div id="template-panel" class="collapsible" hidden>
     <label for="template-select">Choose a template</label>
     <select id="template-select">
       <option value="table-tent">Table tent (restaurant/cafe)</option>
       <option value="event-badge">Event badge</option>
-      <option value="flyer">Flyer sheet (4 tear-off tabs)</option>
+      <option value="flyer">Flyer sheet (tear-off tabs)</option>
     </select>
 
-    <label for="template-title" style="margin-top:10px;">Title</label>
+    <label for="template-title" class="spaced">Title</label>
     <input type="text" id="template-title" placeholder="Scan to see our menu">
 
-    <label for="template-subtitle" style="margin-top:10px;">Subtitle (optional)</label>
+    <label for="template-subtitle" class="spaced">Subtitle (optional)</label>
     <input type="text" id="template-subtitle" placeholder="Free Wi-Fi, order online, reviews...">
 
-    <button type="button" id="template-generate-btn" style="margin-top:10px;">Open printable page</button>
-    <p style="font-size:12px; color:#999; margin-top:8px;">Opens in a new tab — use your browser's Print (Ctrl/Cmd+P) to print or save as PDF.</p>
+    <button type="button" id="template-generate-btn" class="spaced">Open printable page</button>
+    <p class="small-note">Opens in a new tab — use your browser's Print (Ctrl/Cmd+P) to print or save as PDF.</p>
   </div>
 
-  <a href="https://buymeacoffee.com/hekrid" target="_blank" rel="noopener" style="display:block; text-decoration:none; margin-top:20px;">
-    <button type="button" style="background:#FFDD00; color:#1a1a1a;">☕ Buy me a coffee</button>
+  <a href="https://buymeacoffee.com/hekrid" target="_blank" rel="noopener" class="coffee-link">
+    <button type="button" class="coffee-btn">☕ Buy me a coffee</button>
   </a>
   <p class="footer-note">Made with no ads. If it's useful, a donation helps keep it that way.</p>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-  const qrContainer = document.getElementById('qrcode');
-  const typeSelect = document.getElementById('type-select');
+  const API_URL = 'https://qr-dynamic-links.the-hekrid.workers.dev';
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ICON_MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  const ICON_SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 
-  document.getElementById('design-tabs').addEventListener('click', (e) => {
-    const tabBtn = e.target.closest('.design-tab');
-    if (!tabBtn) return;
-    document.querySelectorAll('.design-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.design-tab-panel').forEach(p => p.classList.remove('active'));
-    tabBtn.classList.add('active');
-    document.getElementById('tab-' + tabBtn.dataset.tab).classList.add('active');
-  });
+  const $ = id => document.getElementById(id);
+  const qrContainer = $('qrcode');
+  const typeChipRow = $('type-chip-row');
+  const textInput = $('text-input');
+  const sizeSelect = $('size-select');
+  const colorInput = $('color-input');
+  const bgColorInput = $('bg-color-input');
+  const dotStyleSelect = $('dot-style-select');
+  const cornerStyleSelect = $('corner-style-select');
+  const gradientToggle = $('gradient-toggle');
+  const gradientTypeSelect = $('gradient-type-select');
+  const gradientColor1 = $('gradient-color-1');
+  const gradientColor2 = $('gradient-color-2');
+  const logoInput = $('logo-input');
+  const bgImageInput = $('bg-image-input');
+  const washSlider = $('wash-slider');
+  const logoBgToggle = $('logo-bg-toggle');
+  const logoRoundToggle = $('logo-round-toggle');
+  const toast = $('toast');
+  const historyRow = $('history-row');
+  const batchModeBox = $('batch-mode-box');
+  const batchModeCheckbox = $('batch-mode-checkbox');
+  const singleTextField = $('single-text-field');
+  const batchTextField = $('batch-text-field');
+  const batchInput = $('batch-input');
+  const batchGenerateBtn = $('batch-generate-btn');
+  const batchError = $('batch-error');
+  const themeToggle = $('theme-toggle');
+  const accountChip = $('account-chip');
 
-  const typeChipRow = document.getElementById('type-chip-row');
-  typeChipRow.addEventListener('click', (e) => {
-    const chip = e.target.closest('.type-chip');
-    if (!chip) return;
-    typeChipRow.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    typeSelect.value = chip.dataset.type;
-    typeSelect.dispatchEvent(new Event('change'));
-  });
-  const textInput = document.getElementById('text-input');
-  const sizeSelect = document.getElementById('size-select');
-  const colorInput = document.getElementById('color-input');
-  const bgColorInput = document.getElementById('bg-color-input');
-  const logoInput = document.getElementById('logo-input');
-  const bgImageInput = document.getElementById('bg-image-input');
-  const logoRemoveBtn = document.getElementById('logo-remove-btn');
-  const bgImageRemoveBtn = document.getElementById('bg-image-remove-btn');
-  const washSlider = document.getElementById('wash-slider');
-  const logoBgToggle = document.getElementById('logo-bg-toggle');
-  const logoRoundToggle = document.getElementById('logo-round-toggle');
-  const toast = document.getElementById('toast');
-  const historyRow = document.getElementById('history-row');
-
-  let qr = null;
+  let currentType = 'text';
+  let currentDynamicUrl = null;
   let logoDataUrl = null;
   let bgImageDataUrl = null;
   let renderToken = 0;
+  let toastTimer = null;
 
-  const batchModeBox = document.getElementById('batch-mode-box');
-  const batchModeCheckbox = document.getElementById('batch-mode-checkbox');
-  const singleTextField = document.getElementById('single-text-field');
-  const batchTextField = document.getElementById('batch-text-field');
-
-  function setOutputVisible(visible) {
-    document.getElementById('qrcode').style.display = visible ? 'flex' : 'none';
-    document.querySelectorAll('.scan-hint, .btn-row').forEach(el => el.style.display = visible ? '' : 'none');
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
   }
 
-  batchModeBox.addEventListener('click', () => {
-    batchModeCheckbox.checked = !batchModeCheckbox.checked;
-    const isBatch = batchModeCheckbox.checked;
-    singleTextField.style.display = isBatch ? 'none' : 'block';
-    batchTextField.style.display = isBatch ? 'block' : 'none';
-    setOutputVisible(!isBatch);
-    if (!isBatch) generateQR();
+  function readJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  function writeJson(key, value) {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {}
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggle.innerHTML = theme === 'dark' ? ICON_SUN : ICON_MOON;
+    themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggle.title = theme === 'dark' ? 'Light mode' : 'Dark mode';
+  }
+
+  themeToggle.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('qr_theme', next); } catch (e) {}
+    applyTheme(next);
   });
 
-  typeSelect.addEventListener('change', () => {
-    document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
-    document.getElementById('fields-' + typeSelect.value).classList.add('active');
-    if (typeSelect.value !== 'text' && batchModeCheckbox.checked) {
-      batchModeCheckbox.checked = false;
-      singleTextField.style.display = 'block';
-      batchTextField.style.display = 'none';
-    }
-    const hideOutput = (typeSelect.value === 'text' && batchModeCheckbox.checked)
-      || (typeSelect.value === 'dynamic' && !currentDynamicUrl);
+  $('design-tabs').addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('.design-tab');
+    if (!tabBtn) return;
+    document.querySelectorAll('.design-tab').forEach(t => t.classList.toggle('active', t === tabBtn));
+    document.querySelectorAll('.design-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabBtn.dataset.tab));
+  });
+
+  function setOutputVisible(visible) {
+    qrContainer.style.display = visible ? 'flex' : 'none';
+    document.querySelectorAll('.scan-hint, .btn-row').forEach(el => { el.style.display = visible ? '' : 'none'; });
+  }
+
+  function setBatchMode(on) {
+    batchModeCheckbox.checked = on;
+    singleTextField.hidden = on;
+    batchTextField.hidden = !on;
+  }
+
+  function setType(type) {
+    currentType = type;
+    typeChipRow.querySelectorAll('.type-chip').forEach(c => c.classList.toggle('active', c.dataset.type === type));
+    document.querySelectorAll('.type-fields').forEach(el => el.classList.toggle('active', el.id === 'fields-' + type));
+    if (type !== 'text' && batchModeCheckbox.checked) setBatchMode(false);
+    const hideOutput = (type === 'text' && batchModeCheckbox.checked) || (type === 'dynamic' && !currentDynamicUrl);
     setOutputVisible(!hideOutput);
-    if (typeSelect.value !== 'dynamic' || currentDynamicUrl) generateQR();
+    if (type === 'dynamic') renderDynamicList();
+    generateQR();
+  }
+
+  typeChipRow.addEventListener('click', (e) => {
+    const chip = e.target.closest('.type-chip');
+    if (chip) setType(chip.dataset.type);
+  });
+
+  batchModeBox.addEventListener('click', () => {
+    setBatchMode(!batchModeCheckbox.checked);
+    setOutputVisible(!batchModeCheckbox.checked);
+    if (!batchModeCheckbox.checked) generateQR();
   });
 
   function setFieldError(inputId, errorId, isInvalid) {
-    const input = document.getElementById(inputId);
-    const error = document.getElementById(errorId);
+    const input = $(inputId);
+    const error = $(errorId);
     if (!input || !error) return;
     input.classList.toggle('invalid', isInvalid);
     error.classList.toggle('show', isInvalid);
   }
 
   function buildPayload() {
-    const type = typeSelect.value;
+    const type = currentType;
     if (type === 'wifi') {
-      const ssid = document.getElementById('wifi-ssid').value.trim();
+      const ssid = $('wifi-ssid').value.trim();
       setFieldError('wifi-ssid', 'wifi-ssid-error', ssid.length === 0);
-      const pass = document.getElementById('wifi-password').value.trim();
-      const enc = document.getElementById('wifi-encryption').value;
+      const pass = $('wifi-password').value.trim();
+      const enc = $('wifi-encryption').value;
       const escaped = s => s.replace(/([\\;,:"])/g, '\\$1');
-      if (enc === 'nopass') {
-        return `WIFI:T:nopass;S:${escaped(ssid)};;`;
-      }
+      if (enc === 'nopass') return `WIFI:T:nopass;S:${escaped(ssid)};;`;
       return `WIFI:T:${enc};S:${escaped(ssid)};P:${escaped(pass)};;`;
     }
     if (type === 'vcard') {
-      const name = document.getElementById('vcard-name').value.trim();
-      const phone = document.getElementById('vcard-phone').value.trim();
-      const email = document.getElementById('vcard-email').value.trim();
-      const org = document.getElementById('vcard-org').value.trim();
+      const name = $('vcard-name').value.trim();
+      const phone = $('vcard-phone').value.trim();
+      const email = $('vcard-email').value.trim();
+      const org = $('vcard-org').value.trim();
       let v = 'BEGIN:VCARD\nVERSION:3.0\n';
       if (name) v += `FN:${name}\n`;
       if (org) v += `ORG:${org}\n`;
       if (phone) v += `TEL:${phone}\n`;
       if (email) v += `EMAIL:${email}\n`;
-      v += 'END:VCARD';
-      return v;
+      return v + 'END:VCARD';
     }
     if (type === 'email') {
-      const addr = document.getElementById('email-address').value.trim();
-      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr);
-      setFieldError('email-address', 'email-address-error', addr.length > 0 && !validEmail);
-      const subject = encodeURIComponent(document.getElementById('email-subject').value.trim());
-      const body = encodeURIComponent(document.getElementById('email-body').value.trim());
-      let url = `mailto:${addr}`;
+      const addr = $('email-address').value.trim();
+      setFieldError('email-address', 'email-address-error', addr.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr));
+      const subject = encodeURIComponent($('email-subject').value.trim());
+      const body = encodeURIComponent($('email-body').value.trim());
       const params = [];
       if (subject) params.push('subject=' + subject);
       if (body) params.push('body=' + body);
-      if (params.length) url += '?' + params.join('&');
-      return url;
+      return `mailto:${addr}` + (params.length ? '?' + params.join('&') : '');
     }
     if (type === 'phone') {
-      const num = document.getElementById('phone-number').value.trim();
-      const validPhone = /^\+?[0-9\s-]{4,}$/.test(num);
-      setFieldError('phone-number', 'phone-number-error', num.length > 0 && !validPhone);
+      const num = $('phone-number').value.trim();
+      setFieldError('phone-number', 'phone-number-error', num.length > 0 && !/^\+?[0-9\s-]{4,}$/.test(num));
       return `tel:${num}`;
     }
-    if (type === 'dynamic') {
-      return currentDynamicUrl || '';
-    }
+    if (type === 'dynamic') return currentDynamicUrl || '';
     return textInput.value.trim() || 'https://example.com';
   }
 
-  const DEFAULT_WORKER_URL = 'https://qr-dynamic-links.the-hekrid.workers.dev';
-
-  let currentDynamicUrl = null;
-  const workerUrlInput = document.getElementById('worker-url-input');
-  const dynamicDestInput = document.getElementById('dynamic-destination');
-  const dynamicCreateBtn = document.getElementById('dynamic-create-btn');
-  const dynamicResult = document.getElementById('dynamic-result');
-  const dynamicList = document.getElementById('dynamic-list');
-
-  workerUrlInput.value = localStorage.getItem('qr_worker_url') || DEFAULT_WORKER_URL;
-  workerUrlInput.addEventListener('change', () => {
-    localStorage.setItem('qr_worker_url', workerUrlInput.value.trim());
-  });
-
-  function getSavedDynamicLinks() {
-    try { return JSON.parse(localStorage.getItem('qr_dynamic_links') || '[]'); }
-    catch (e) { return []; }
-  }
-
-  function saveDynamicLinks(links) {
-    localStorage.setItem('qr_dynamic_links', JSON.stringify(links));
-  }
-
-  async function createDynamicLink() {
-    const workerUrl = workerUrlInput.value.trim().replace(/\/$/, '');
-    const destination = dynamicDestInput.value.trim();
-    const validUrl = /^https?:\/\/.+/.test(destination);
-
-    setFieldError('worker-url-input', 'worker-url-error', workerUrl.length === 0);
-    setFieldError('dynamic-destination', 'dynamic-destination-error', !validUrl);
-    if (!workerUrl || !validUrl) return;
-
-    dynamicCreateBtn.disabled = true;
-    dynamicCreateBtn.textContent = 'Creating…';
-    try {
-      const res = await fetch(`${workerUrl}/api/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create link');
-
-      currentDynamicUrl = data.url;
-      const links = getSavedDynamicLinks();
-      links.unshift({ code: data.code, token: data.token, url: data.url, destination, created: Date.now() });
-      saveDynamicLinks(links);
-      renderDynamicList(workerUrl);
-
-      dynamicResult.style.display = 'block';
-      dynamicResult.textContent = `Created: ${data.url}`;
-      setOutputVisible(true);
-      generateQR();
-    } catch (err) {
-      showToast(err.message || 'Could not reach backend — check the URL');
-    }
-    dynamicCreateBtn.disabled = false;
-    dynamicCreateBtn.textContent = 'Create dynamic link';
-  }
-
-  function renderDynamicList(workerUrl) {
-    const links = getSavedDynamicLinks();
-    dynamicList.innerHTML = '';
-    if (links.length === 0) {
-      dynamicList.innerHTML = '<span style="color:#999;">No dynamic links yet.</span>';
-      return;
-    }
-    links.forEach(link => {
-      const row = document.createElement('div');
-      row.style.cssText = 'border:1px solid #eee; border-radius:8px; padding:8px; margin-top:6px;';
-
-      const urlLine = document.createElement('div');
-      urlLine.textContent = link.url;
-      urlLine.style.fontWeight = '600';
-      row.appendChild(urlLine);
-
-      const destInput = document.createElement('input');
-      destInput.type = 'text';
-      destInput.value = link.destination;
-      destInput.style.marginTop = '6px';
-      row.appendChild(destInput);
-
-      const btnRow = document.createElement('div');
-      btnRow.style.cssText = 'display:flex; gap:6px; margin-top:6px;';
-
-      const useBtn = document.createElement('button');
-      useBtn.type = 'button';
-      useBtn.textContent = 'Use this code';
-      useBtn.className = 'secondary';
-      useBtn.style.cssText = 'width:auto; padding:6px 10px; margin-top:0;';
-      useBtn.addEventListener('click', () => {
-        currentDynamicUrl = link.url;
-        setOutputVisible(true);
-        generateQR();
-      });
-
-      const updateBtn = document.createElement('button');
-      updateBtn.type = 'button';
-      updateBtn.textContent = 'Save new destination';
-      updateBtn.className = 'secondary';
-      updateBtn.style.cssText = 'width:auto; padding:6px 10px; margin-top:0;';
-      updateBtn.addEventListener('click', async () => {
-        const newDest = destInput.value.trim();
-        if (!/^https?:\/\/.+/.test(newDest)) { showToast('Enter a valid http(s) URL'); return; }
-        try {
-          const res = await fetch(`${workerUrl}/api/update`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: link.code, token: link.token, destination: newDest })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Update failed');
-          link.destination = newDest;
-          saveDynamicLinks(links);
-          showToast('Destination updated');
-        } catch (err) {
-          showToast(err.message || 'Could not update');
-        }
-      });
-
-      btnRow.appendChild(useBtn);
-      btnRow.appendChild(updateBtn);
-      row.appendChild(btnRow);
-      dynamicList.appendChild(row);
-    });
-  }
-
-  dynamicCreateBtn.addEventListener('click', createDynamicLink);
-  renderDynamicList(workerUrlInput.value.trim().replace(/\/$/, ''));
-
-  document.getElementById('preset-row').addEventListener('click', (e) => {
-    const btn = e.target.closest('.swatch');
-    if (!btn) return;
-    colorInput.value = btn.dataset.pattern;
-    bgColorInput.value = btn.dataset.bg;
-    generateQR();
-  });
-
-  function buildEyeOptions(useGradient, color) {
-    if (!useGradient) return { color };
+  function getDesign() {
     return {
-      gradient: {
-        type: 'linear',
-        rotation: Math.PI / 4,
-        colorStops: [
-          { offset: 0, color: document.getElementById('gradient-color-1').value },
-          { offset: 1, color: document.getElementById('gradient-color-2').value }
-        ]
-      }
+      size: parseInt(sizeSelect.value, 10),
+      color: colorInput.value,
+      bgColor: bgColorInput.value,
+      dotType: dotStyleSelect.value,
+      cornerType: cornerStyleSelect.value,
+      gradient: gradientToggle.checked
+        ? { type: gradientTypeSelect.value, from: gradientColor1.value, to: gradientColor2.value }
+        : null
     };
   }
 
-  function generateQR() {
-    const myToken = ++renderToken;
-    qrContainer.innerHTML = '';
-    const text = buildPayload();
-    const size = parseInt(sizeSelect.value, 10);
-    const color = colorInput.value;
-    const bgColor = bgColorInput.value;
-    const dotType = document.getElementById('dot-style-select').value;
-    const cornerType = document.getElementById('corner-style-select').value;
-    const useGradient = document.getElementById('gradient-toggle').checked;
-
-    const dotsOptions = { type: dotType };
-    if (useGradient) {
-      dotsOptions.gradient = {
-        type: 'linear',
-        rotation: Math.PI / 4,
-        colorStops: [
-          { offset: 0, color: document.getElementById('gradient-color-1').value },
-          { offset: 1, color: document.getElementById('gradient-color-2').value }
-        ]
-      };
-    } else {
-      dotsOptions.color = color;
-    }
-
-    qr = new QRCodeStyling({
-      width: size,
-      height: size,
-      type: 'canvas',
-      data: text,
+  function stylingOptions(data, design, background) {
+    const fill = () => design.gradient
+      ? {
+          gradient: {
+            type: design.gradient.type,
+            rotation: 0,
+            colorStops: [
+              { offset: 0, color: design.gradient.from },
+              { offset: 1, color: design.gradient.to }
+            ]
+          }
+        }
+      : { color: design.color };
+    return {
+      width: design.size,
+      height: design.size,
+      type: 'svg',
+      data,
       margin: 0,
       qrOptions: { errorCorrectionLevel: 'H' },
-      dotsOptions: dotsOptions,
-      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, ...buildEyeOptions(useGradient, color) },
-      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', ...buildEyeOptions(useGradient, color) },
-      backgroundOptions: { color: bgImageDataUrl ? '#ffffff' : bgColor }
-    });
-    qr.append(qrContainer);
+      dotsOptions: { type: design.dotType, ...fill() },
+      cornersSquareOptions: { type: design.cornerType, ...fill() },
+      cornersDotOptions: { type: design.cornerType === 'square' ? 'square' : 'dot', ...fill() },
+      backgroundOptions: { color: background }
+    };
+  }
 
-    setTimeout(() => {
-      if (myToken !== renderToken) return;
-      if (bgImageDataUrl) {
-        drawBackground(size, bgColor, myToken, () => {
-          if (myToken !== renderToken) return;
-          if (logoDataUrl) drawLogo(size, bgColor);
-        });
-      } else if (logoDataUrl) {
-        drawLogo(size, bgColor);
+  function unifyGradients(svgText, size, gradientType) {
+    const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+    const gradients = [
+      ...doc.getElementsByTagNameNS(SVG_NS, 'linearGradient'),
+      ...doc.getElementsByTagNameNS(SVG_NS, 'radialGradient')
+    ];
+    gradients.forEach(g => {
+      if (g.getAttribute('id') === 'background-color') return;
+      g.setAttribute('gradientUnits', 'userSpaceOnUse');
+      if (g.localName === 'radialGradient') {
+        const c = String(size / 2);
+        ['cx', 'cy', 'fx', 'fy'].forEach(a => g.setAttribute(a, c));
+        g.setAttribute('r', String(size * Math.SQRT1_2));
+      } else {
+        g.setAttribute('x1', '0');
+        g.setAttribute('y1', '0');
+        g.setAttribute('x2', String(size));
+        g.setAttribute('y2', String(size));
       }
-    }, 60);
+    });
+    return new XMLSerializer().serializeToString(doc.documentElement);
   }
 
-  function drawBackground(size, bgColor, myToken, onDone) {
-    const sourceCanvas = qrContainer.querySelector('canvas');
-    const sourceImg = qrContainer.querySelector('img');
-    const qrSource = sourceCanvas || sourceImg;
-    if (!qrSource) { if (onDone) onDone(); return; }
-
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = size;
-    finalCanvas.height = size;
-    const ctx = finalCanvas.getContext('2d');
-
-    const bgImg = new Image();
-    bgImg.onload = () => {
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, size, size);
-
-      const scale = Math.max(size / bgImg.width, size / bgImg.height);
-      const drawW = bgImg.width * scale;
-      const drawH = bgImg.height * scale;
-      ctx.drawImage(bgImg, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
-
-      const washAmount = parseInt(washSlider.value, 10) / 100;
-      ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = washAmount;
-      ctx.fillRect(0, 0, size, size);
-      ctx.globalAlpha = 1;
-
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.drawImage(qrSource, 0, 0, size, size);
-      ctx.globalCompositeOperation = 'source-over';
-
-      if (myToken !== renderToken) return;
-      qrContainer.innerHTML = '';
-      qrContainer.appendChild(finalCanvas);
-      if (onDone) onDone();
-    };
-    bgImg.src = bgImageDataUrl;
+  async function renderSvgString(data, design, background) {
+    const qr = new QRCodeStyling(stylingOptions(data, design, background));
+    const blob = await qr.getRawData('svg');
+    const text = await blob.text();
+    return design.gradient ? unifyGradients(text, design.size, design.gradient.type) : text;
   }
 
-  function drawLogo(size, bgColor, onDone) {
-    const sourceCanvas = qrContainer.querySelector('canvas');
-    const sourceImg = qrContainer.querySelector('img');
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image failed to load'));
+      img.src = src;
+    });
+  }
 
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = size;
-    finalCanvas.height = size;
-    const ctx = finalCanvas.getContext('2d');
+  function blankCanvas(size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    return canvas;
+  }
 
-    const drawEverything = (qrSource) => {
-      ctx.drawImage(qrSource, 0, 0, size, size);
-
-      const logo = new Image();
-      logo.onload = () => {
-        const logoSize = size * 0.22;
-        const pad = logoSize * 0.15;
-        const x = (size - logoSize) / 2;
-        const y = (size - logoSize) / 2;
-        const boxX = x - pad;
-        const boxY = y - pad;
-        const boxSize = logoSize + pad * 2;
-        const useRound = logoRoundToggle.checked;
-        const useBg = logoBgToggle.checked;
-        const cornerRadius = useRound ? boxSize * 0.28 : 0;
-
-        if (useBg) {
-          ctx.fillStyle = bgColor;
-          roundedRect(ctx, boxX, boxY, boxSize, boxSize, cornerRadius);
-          ctx.fill();
-        }
-
-        ctx.save();
-        roundedRect(ctx, x, y, logoSize, logoSize, useRound ? cornerRadius * 0.7 : 0);
-        ctx.clip();
-
-        const imgRatio = logo.naturalWidth / logo.naturalHeight;
-        let drawW = logoSize;
-        let drawH = logoSize;
-        if (imgRatio > 1) drawH = logoSize / imgRatio;
-        else if (imgRatio < 1) drawW = logoSize * imgRatio;
-        const drawX = x + (logoSize - drawW) / 2;
-        const drawY = y + (logoSize - drawH) / 2;
-        ctx.drawImage(logo, drawX, drawY, drawW, drawH);
-        ctx.restore();
-
-        qrContainer.innerHTML = '';
-        qrContainer.appendChild(finalCanvas);
-        if (onDone) onDone();
-      };
-      logo.src = logoDataUrl;
-    };
-
-    if (sourceCanvas) drawEverything(sourceCanvas);
-    else if (sourceImg) {
-      if (sourceImg.complete) drawEverything(sourceImg);
-      else sourceImg.onload = () => drawEverything(sourceImg);
+  async function svgToCanvas(svgText, size) {
+    const url = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
+    try {
+      const img = await loadImage(url);
+      const canvas = blankCanvas(size);
+      canvas.getContext('2d').drawImage(img, 0, 0, size, size);
+      return canvas;
+    } finally {
+      URL.revokeObjectURL(url);
     }
+  }
+
+  async function applyBackgroundImage(qrCanvas, design) {
+    const size = design.size;
+    const bgImg = await loadImage(bgImageDataUrl);
+    const canvas = blankCanvas(size);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = design.bgColor;
+    ctx.fillRect(0, 0, size, size);
+    const scale = Math.max(size / bgImg.width, size / bgImg.height);
+    const drawW = bgImg.width * scale;
+    const drawH = bgImg.height * scale;
+    ctx.drawImage(bgImg, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+    ctx.globalAlpha = parseInt(washSlider.value, 10) / 100;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(qrCanvas, 0, 0, size, size);
+    ctx.globalCompositeOperation = 'source-over';
+    return canvas;
   }
 
   function roundedRect(ctx, x, y, w, h, r) {
@@ -865,83 +847,113 @@
     ctx.closePath();
   }
 
+  async function applyLogo(qrCanvas, design) {
+    const size = design.size;
+    const logo = await loadImage(logoDataUrl);
+    const canvas = blankCanvas(size);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(qrCanvas, 0, 0, size, size);
+
+    const logoSize = size * 0.22;
+    const pad = logoSize * 0.15;
+    const x = (size - logoSize) / 2;
+    const y = (size - logoSize) / 2;
+    const boxSize = logoSize + pad * 2;
+    const useRound = logoRoundToggle.checked;
+    const cornerRadius = useRound ? boxSize * 0.28 : 0;
+
+    if (logoBgToggle.checked) {
+      ctx.fillStyle = design.bgColor;
+      roundedRect(ctx, x - pad, y - pad, boxSize, boxSize, cornerRadius);
+      ctx.fill();
+    }
+
+    ctx.save();
+    roundedRect(ctx, x, y, logoSize, logoSize, useRound ? cornerRadius * 0.7 : 0);
+    ctx.clip();
+    const ratio = logo.naturalWidth / logo.naturalHeight;
+    let drawW = logoSize;
+    let drawH = logoSize;
+    if (ratio > 1) drawH = logoSize / ratio;
+    else if (ratio < 1) drawW = logoSize * ratio;
+    ctx.drawImage(logo, x + (logoSize - drawW) / 2, y + (logoSize - drawH) / 2, drawW, drawH);
+    ctx.restore();
+    return canvas;
+  }
+
+  async function composeQr(data, design) {
+    const svg = await renderSvgString(data, design, bgImageDataUrl ? '#ffffff' : design.bgColor);
+    let canvas = await svgToCanvas(svg, design.size);
+    if (bgImageDataUrl) canvas = await applyBackgroundImage(canvas, design);
+    if (logoDataUrl) canvas = await applyLogo(canvas, design);
+    return canvas;
+  }
+
+  async function generateQR() {
+    const myToken = ++renderToken;
+    const data = buildPayload();
+    if (!data) {
+      qrContainer.replaceChildren();
+      return;
+    }
+    try {
+      const canvas = await composeQr(data, getDesign());
+      if (myToken === renderToken) qrContainer.replaceChildren(canvas);
+    } catch (err) {
+      if (myToken === renderToken) {
+        qrContainer.replaceChildren();
+        showToast('This content is too long to fit in a QR code');
+      }
+    }
+  }
+
   function getCurrentCanvas() {
     return qrContainer.querySelector('canvas');
   }
 
+  function triggerDownload(blobOrUrl, filename) {
+    const isBlob = blobOrUrl instanceof Blob;
+    const url = isBlob ? URL.createObjectURL(blobOrUrl) : blobOrUrl;
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    if (isBlob) setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function downloadQR() {
     const canvas = getCurrentCanvas();
-    const img = qrContainer.querySelector('img');
-    const link = document.createElement('a');
-    link.download = 'qrcode.png';
-    if (canvas) link.href = canvas.toDataURL('image/png');
-    else if (img) link.href = img.src;
-    else return;
-    link.click();
+    if (!canvas) { showToast('Nothing to download yet'); return; }
+    triggerDownload(canvas.toDataURL('image/png'), 'qrcode.png');
     saveToHistory(buildPayload());
   }
 
-  function downloadSVG() {
-    if (!qr) {
-      showToast('SVG export unavailable for this code');
-      return;
+  async function downloadSVG() {
+    const data = buildPayload();
+    if (!data) { showToast('Nothing to download yet'); return; }
+    const design = getDesign();
+    try {
+      const svg = await renderSvgString(data, design, design.bgColor);
+      triggerDownload(new Blob([svg], { type: 'image/svg+xml' }), 'qrcode.svg');
+      saveToHistory(data);
+      if (logoDataUrl || bgImageDataUrl) showToast("The SVG doesn't include the logo or background image — use PNG for those");
+    } catch (err) {
+      showToast('Could not create the SVG');
     }
-    const size = parseInt(sizeSelect.value, 10);
-    const color = colorInput.value;
-    const bgColor = bgColorInput.value;
-    const dotType = document.getElementById('dot-style-select').value;
-    const cornerType = document.getElementById('corner-style-select').value;
-    const useGradient = document.getElementById('gradient-toggle').checked;
-
-    const dotsOptions = { type: dotType };
-    if (useGradient) {
-      dotsOptions.gradient = {
-        type: 'linear',
-        rotation: Math.PI / 4,
-        colorStops: [
-          { offset: 0, color: document.getElementById('gradient-color-1').value },
-          { offset: 1, color: document.getElementById('gradient-color-2').value }
-        ]
-      };
-    } else {
-      dotsOptions.color = color;
-    }
-
-    const svgQr = new QRCodeStyling({
-      width: size,
-      height: size,
-      type: 'svg',
-      data: buildPayload(),
-      margin: 0,
-      qrOptions: { errorCorrectionLevel: 'H' },
-      dotsOptions: dotsOptions,
-      cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, ...buildEyeOptions(useGradient, color) },
-      cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', ...buildEyeOptions(useGradient, color) },
-      backgroundOptions: { color: bgColor }
-    });
-    svgQr.download({ name: 'qrcode', extension: 'svg' });
-    saveToHistory(buildPayload());
   }
 
   function copyToClipboard() {
     const canvas = getCurrentCanvas();
     if (!canvas) { showToast('Nothing to copy yet'); return; }
+    if (!navigator.clipboard || !window.ClipboardItem) { showToast('Clipboard not supported in this browser'); return; }
     canvas.toBlob((blob) => {
       if (!blob) { showToast('Copy failed'); return; }
-      if (navigator.clipboard && window.ClipboardItem) {
-        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-          .then(() => { showToast('Copied to clipboard'); saveToHistory(buildPayload()); })
-          .catch(() => showToast('Copy failed — try downloading instead'));
-      } else {
-        showToast('Clipboard not supported in this browser');
-      }
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        .then(() => { showToast('Copied to clipboard'); saveToHistory(buildPayload()); })
+        .catch(() => showToast('Copy failed — try downloading instead'));
     });
-  }
-
-  function showToast(msg) {
-    toast.textContent = msg;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 1800);
   }
 
   const TYPE_FIELD_IDS = {
@@ -949,106 +961,397 @@
     wifi: ['wifi-ssid', 'wifi-password', 'wifi-encryption'],
     vcard: ['vcard-name', 'vcard-phone', 'vcard-email', 'vcard-org'],
     email: ['email-address', 'email-subject', 'email-body'],
-    phone: ['phone-number']
+    phone: ['phone-number'],
+    dynamic: []
   };
 
   function snapshotFields(type) {
-    const ids = TYPE_FIELD_IDS[type] || [];
     const values = {};
-    ids.forEach(id => { values[id] = document.getElementById(id).value; });
+    (TYPE_FIELD_IDS[type] || []).forEach(id => { values[id] = $(id).value; });
     return values;
   }
 
   function restoreFields(type, values) {
-    const ids = TYPE_FIELD_IDS[type] || [];
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && values[id] !== undefined) el.value = values[id];
+    (TYPE_FIELD_IDS[type] || []).forEach(id => {
+      if (values[id] !== undefined) $(id).value = values[id];
     });
   }
 
-  function labelForHistory(type, values) {
+  function labelForHistory(type, values, text) {
     if (type === 'wifi') return `Wi-Fi: ${values['wifi-ssid'] || ''}`;
     if (type === 'vcard') return `Contact: ${values['vcard-name'] || ''}`;
     if (type === 'email') return `Email: ${values['email-address'] || ''}`;
     if (type === 'phone') return `Phone: ${values['phone-number'] || ''}`;
-    return values['text-input'] || '';
+    if (type === 'dynamic') return `Dynamic: ${text}`;
+    return values['text-input'] || text;
   }
 
   function saveToHistory(text) {
     const canvas = getCurrentCanvas();
-    if (!canvas) return;
-    const type = typeSelect.value;
-    const values = snapshotFields(type);
-    let history = [];
-    try { history = JSON.parse(localStorage.getItem('qr_history') || '[]'); } catch (e) { history = []; }
-    const thumb = canvas.toDataURL('image/png');
-    history = history.filter(h => h.text !== text);
-    history.unshift({ text, thumb, ts: Date.now(), type, values, label: labelForHistory(type, values) });
-    history = history.slice(0, 8);
-    localStorage.setItem('qr_history', JSON.stringify(history));
+    if (!canvas || !text) return;
+    const values = snapshotFields(currentType);
+    let history = readJson('qr_history', []).filter(h => h.text !== text);
+    history.unshift({
+      text,
+      thumb: canvas.toDataURL('image/png'),
+      ts: Date.now(),
+      type: currentType,
+      values,
+      label: labelForHistory(currentType, values, text)
+    });
+    writeJson('qr_history', history.slice(0, 8));
     renderHistory();
   }
 
   function renderHistory() {
-    let history = [];
-    try { history = JSON.parse(localStorage.getItem('qr_history') || '[]'); } catch (e) { history = []; }
-    historyRow.innerHTML = '';
-    history.forEach(h => {
+    historyRow.replaceChildren();
+    readJson('qr_history', []).forEach(h => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'history-item';
       btn.title = h.label || h.text;
       const img = document.createElement('img');
       img.src = h.thumb;
+      img.alt = h.label || h.text;
       btn.appendChild(img);
       btn.addEventListener('click', () => {
         const type = h.type || 'text';
-        typeSelect.value = type;
-        document.querySelectorAll('.type-fields').forEach(el => el.classList.remove('active'));
-        document.getElementById('fields-' + type).classList.add('active');
-
-        if (batchModeCheckbox.checked) {
-          batchModeCheckbox.checked = false;
-          singleTextField.style.display = 'block';
-          batchTextField.style.display = 'none';
-        }
-
-        if (h.values) {
-          restoreFields(type, h.values);
-        } else {
-          textInput.value = h.text;
-        }
-        setOutputVisible(true);
-        generateQR();
+        if (h.values) restoreFields(type, h.values);
+        else textInput.value = h.text;
+        if (type === 'dynamic') currentDynamicUrl = h.text;
+        if (batchModeCheckbox.checked) setBatchMode(false);
+        setType(type);
       });
       historyRow.appendChild(btn);
     });
   }
 
-  logoInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) { logoDataUrl = null; generateQR(); return; }
-    const reader = new FileReader();
-    reader.onload = (evt) => { logoDataUrl = evt.target.result; generateQR(); };
-    reader.readAsDataURL(file);
+  let session = readJson('qr_session', null);
+  let authMode = 'login';
+  const accountBar = $('account-bar');
+  const accountName = $('account-name');
+  const dynamicWarning = $('dynamic-warning');
+  const authPanel = $('auth-panel');
+  const authUsername = $('auth-username');
+  const authPassword = $('auth-password');
+  const authPassword2 = $('auth-password-2');
+  const authConfirmWrap = $('auth-confirm-wrap');
+  const authError = $('auth-error');
+  const authSubmitBtn = $('auth-submit-btn');
+  const dynamicDestInput = $('dynamic-destination');
+  const dynamicCreateBtn = $('dynamic-create-btn');
+  const dynamicResult = $('dynamic-result');
+  const dynamicList = $('dynamic-list');
+
+  function setSession(next) {
+    session = next;
+    writeJson('qr_session', next);
+    updateAccountUi();
+  }
+
+  function updateAccountUi() {
+    const signedIn = Boolean(session);
+    accountChip.textContent = signedIn ? session.username : 'Sign in';
+    accountChip.title = signedIn ? 'Your account' : 'Sign in or create an account';
+    accountBar.hidden = !signedIn;
+    accountName.textContent = signedIn ? session.username : '';
+    dynamicWarning.hidden = signedIn;
+    if (signedIn) authPanel.hidden = true;
+  }
+
+  async function api(path, { method = 'GET', body, auth = false } = {}) {
+    const headers = {};
+    if (body) headers['Content-Type'] = 'application/json';
+    if (auth && session) headers.Authorization = `Bearer ${session.token}`;
+    let res;
+    try {
+      res = await fetch(API_URL + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    } catch (e) {
+      throw new Error('Could not reach the server. Check your connection and try again.');
+    }
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401 && auth && session) {
+      setSession(null);
+      showToast('Your session expired — please sign in again');
+    }
+    if (!res.ok) {
+      const err = new Error(data.error || 'Something went wrong');
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    authPanel.querySelectorAll('[data-auth-mode]').forEach(b => b.classList.toggle('active', b.dataset.authMode === mode));
+    const registering = mode === 'register';
+    authConfirmWrap.hidden = !registering;
+    authPassword.setAttribute('autocomplete', registering ? 'new-password' : 'current-password');
+    authSubmitBtn.textContent = registering ? 'Create account' : 'Sign in';
+    authError.classList.remove('show');
+  }
+
+  function openAuth(mode) {
+    setAuthMode(mode);
+    authPanel.hidden = false;
+    authPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => authUsername.focus({ preventScroll: true }), 250);
+  }
+
+  function showAuthError(msg) {
+    authError.textContent = msg;
+    authError.classList.add('show');
+  }
+
+  document.querySelectorAll('[data-open-auth]').forEach(btn => {
+    btn.addEventListener('click', () => openAuth(btn.dataset.openAuth));
+  });
+  authPanel.querySelectorAll('[data-auth-mode]').forEach(btn => {
+    btn.addEventListener('click', () => setAuthMode(btn.dataset.authMode));
   });
 
-  bgImageInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) { bgImageDataUrl = null; generateQR(); return; }
-    const reader = new FileReader();
-    reader.onload = (evt) => { bgImageDataUrl = evt.target.result; generateQR(); };
-    reader.readAsDataURL(file);
+  authPanel.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = authUsername.value.trim();
+    const password = authPassword.value;
+    if (!/^[a-zA-Z0-9_.-]{3,32}$/.test(username)) {
+      showAuthError('Username must be 3-32 characters: letters, numbers, dots, dashes or underscores.');
+      return;
+    }
+    if (password.length < 8) { showAuthError('Password must be at least 8 characters.'); return; }
+    if (authMode === 'register' && password !== authPassword2.value) { showAuthError("The passwords don't match."); return; }
+
+    authSubmitBtn.disabled = true;
+    authSubmitBtn.textContent = authMode === 'register' ? 'Creating account…' : 'Signing in…';
+    try {
+      const data = await api(authMode === 'register' ? '/api/register' : '/api/login', {
+        method: 'POST',
+        body: { username, password }
+      });
+      setSession({ token: data.token, username: data.username });
+      authPassword.value = '';
+      authPassword2.value = '';
+      const moved = await claimLocalLinks();
+      showToast(moved > 0
+        ? `Signed in — moved ${moved} link${moved === 1 ? '' : 's'} from this browser to your account`
+        : `Signed in as ${data.username}`);
+      renderDynamicList();
+    } catch (err) {
+      showAuthError(err.message);
+    }
+    authSubmitBtn.disabled = false;
+    authSubmitBtn.textContent = authMode === 'register' ? 'Create account' : 'Sign in';
   });
 
-  logoRemoveBtn.addEventListener('click', () => {
+  $('logout-btn').addEventListener('click', async () => {
+    try { await api('/api/logout', { method: 'POST', auth: true }); } catch (e) {}
+    setSession(null);
+    currentDynamicUrl = null;
+    dynamicResult.hidden = true;
+    if (currentType === 'dynamic') setType('dynamic');
+    showToast('Logged out');
+  });
+
+  accountChip.addEventListener('click', () => {
+    setType('dynamic');
+    if (session) accountBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    else openAuth('login');
+  });
+
+  function getLocalLinks() {
+    return readJson('qr_dynamic_links', []);
+  }
+
+  function saveLocalLinks(links) {
+    writeJson('qr_dynamic_links', links);
+  }
+
+  async function claimLocalLinks() {
+    if (!session) return 0;
+    const links = getLocalLinks();
+    const remaining = [];
+    let moved = 0;
+    for (let i = 0; i < links.length; i++) {
+      if (!session) {
+        remaining.push(...links.slice(i));
+        break;
+      }
+      try {
+        await api('/api/claim', { method: 'POST', body: { code: links[i].code, token: links[i].token }, auth: true });
+        moved++;
+      } catch (err) {
+        if (err.status !== 403 && err.status !== 404) remaining.push(links[i]);
+      }
+    }
+    saveLocalLinks(remaining);
+    return moved;
+  }
+
+  async function createDynamicLink() {
+    const destination = dynamicDestInput.value.trim();
+    const validUrl = /^https?:\/\/\S+$/.test(destination);
+    setFieldError('dynamic-destination', 'dynamic-destination-error', !validUrl);
+    if (!validUrl) return;
+
+    dynamicCreateBtn.disabled = true;
+    dynamicCreateBtn.textContent = 'Creating…';
+    try {
+      const data = await api('/api/create', { method: 'POST', body: { destination }, auth: Boolean(session) });
+      if (data.token) {
+        const links = getLocalLinks();
+        links.unshift({ code: data.code, token: data.token, url: data.url, destination, created: Date.now() });
+        saveLocalLinks(links);
+      }
+      currentDynamicUrl = data.url;
+      dynamicResult.textContent = `Created: ${data.url}`;
+      dynamicResult.hidden = false;
+      setOutputVisible(true);
+      generateQR();
+      renderDynamicList();
+    } catch (err) {
+      showToast(err.message);
+    }
+    dynamicCreateBtn.disabled = false;
+    dynamicCreateBtn.textContent = 'Create dynamic link';
+  }
+
+  function makeButton(label, className, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = label;
+    btn.className = className;
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  function renderLinkRows(links, fromAccount) {
+    dynamicList.replaceChildren();
+    if (links.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'empty-note';
+      empty.textContent = 'No dynamic links yet.';
+      dynamicList.appendChild(empty);
+      return;
+    }
+    links.forEach(link => {
+      const row = document.createElement('div');
+      row.className = 'link-row';
+
+      const urlLine = document.createElement('div');
+      urlLine.className = 'link-url';
+      urlLine.textContent = link.url;
+      row.appendChild(urlLine);
+
+      const destInput = document.createElement('input');
+      destInput.type = 'text';
+      destInput.value = link.destination;
+      destInput.setAttribute('aria-label', 'Destination for ' + link.url);
+      row.appendChild(destInput);
+
+      const actions = document.createElement('div');
+      actions.className = 'link-actions';
+      const credentials = fromAccount ? {} : { token: link.token };
+
+      actions.appendChild(makeButton('Use this code', 'secondary small', () => {
+        currentDynamicUrl = link.url;
+        setOutputVisible(true);
+        generateQR();
+      }));
+
+      actions.appendChild(makeButton('Save new destination', 'secondary small', async () => {
+        const newDest = destInput.value.trim();
+        if (!/^https?:\/\/\S+$/.test(newDest)) { showToast('Enter a valid http(s) URL'); return; }
+        try {
+          await api('/api/update', { method: 'POST', body: { code: link.code, destination: newDest, ...credentials }, auth: fromAccount });
+          if (!fromAccount) {
+            saveLocalLinks(getLocalLinks().map(l => l.code === link.code ? { ...l, destination: newDest } : l));
+          }
+          showToast('Destination updated');
+        } catch (err) {
+          showToast(err.message);
+        }
+      }));
+
+      actions.appendChild(makeButton('Delete', 'secondary small danger-text', async () => {
+        if (!confirm('Delete this link? Any printed QR code that uses it will stop working.')) return;
+        try {
+          await api('/api/delete', { method: 'POST', body: { code: link.code, ...credentials }, auth: fromAccount });
+          if (!fromAccount) saveLocalLinks(getLocalLinks().filter(l => l.code !== link.code));
+          if (currentDynamicUrl === link.url) {
+            currentDynamicUrl = null;
+            dynamicResult.hidden = true;
+            setOutputVisible(false);
+            generateQR();
+          }
+          showToast('Link deleted');
+          renderDynamicList();
+        } catch (err) {
+          showToast(err.message);
+        }
+      }));
+
+      row.appendChild(actions);
+      dynamicList.appendChild(row);
+    });
+  }
+
+  async function renderDynamicList() {
+    if (!session) {
+      renderLinkRows(getLocalLinks(), false);
+      return;
+    }
+    const loading = document.createElement('span');
+    loading.className = 'empty-note';
+    loading.textContent = 'Loading your links…';
+    dynamicList.replaceChildren(loading);
+    try {
+      const data = await api('/api/links', { auth: true });
+      renderLinkRows(data.links, true);
+    } catch (err) {
+      if (!session) renderLinkRows(getLocalLinks(), false);
+      else loading.textContent = err.message;
+    }
+  }
+
+  dynamicCreateBtn.addEventListener('click', createDynamicLink);
+  dynamicDestInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') createDynamicLink(); });
+
+  document.querySelectorAll('[data-pattern]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      colorInput.value = btn.dataset.pattern;
+      bgColorInput.value = btn.dataset.bg;
+      generateQR();
+    });
+  });
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (evt) => resolve(evt.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  logoInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    logoDataUrl = file ? await readFileAsDataUrl(file) : null;
+    generateQR();
+  });
+
+  bgImageInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    bgImageDataUrl = file ? await readFileAsDataUrl(file) : null;
+    generateQR();
+  });
+
+  $('logo-remove-btn').addEventListener('click', () => {
     logoDataUrl = null;
     logoInput.value = '';
     generateQR();
   });
 
-  bgImageRemoveBtn.addEventListener('click', () => {
+  $('bg-image-remove-btn').addEventListener('click', () => {
     bgImageDataUrl = null;
     bgImageInput.value = '';
     generateQR();
@@ -1060,10 +1363,6 @@
     washDebounce = setTimeout(generateQR, 80);
   });
 
-  const batchInput = document.getElementById('batch-input');
-  const batchGenerateBtn = document.getElementById('batch-generate-btn');
-  const batchError = document.getElementById('batch-error');
-
   async function generateBatchZip() {
     const lines = batchInput.value.split('\n').map(l => l.trim()).filter(Boolean);
     batchInput.classList.toggle('invalid', lines.length === 0);
@@ -1072,65 +1371,25 @@
 
     batchGenerateBtn.textContent = 'Generating…';
     batchGenerateBtn.disabled = true;
-
     const zip = new JSZip();
-    const size = parseInt(sizeSelect.value, 10);
-    const color = colorInput.value;
-    const bgColor = bgColorInput.value;
-    const dotType = document.getElementById('dot-style-select').value;
-    const cornerType = document.getElementById('corner-style-select').value;
-    const useGradient = document.getElementById('gradient-toggle').checked;
-    const dotsOptions = { type: dotType };
-    if (useGradient) {
-      dotsOptions.gradient = {
-        type: 'linear',
-        rotation: Math.PI / 4,
-        colorStops: [
-          { offset: 0, color: document.getElementById('gradient-color-1').value },
-          { offset: 1, color: document.getElementById('gradient-color-2').value }
-        ]
-      };
-    } else {
-      dotsOptions.color = color;
-    }
-
-    const offscreen = document.createElement('div');
-    offscreen.style.position = 'absolute';
-    offscreen.style.left = '-9999px';
-    document.body.appendChild(offscreen);
+    const design = getDesign();
+    let failed = 0;
 
     for (let i = 0; i < lines.length; i++) {
-      offscreen.innerHTML = '';
-      new QRCodeStyling({
-        width: size,
-        height: size,
-        type: 'canvas',
-        data: lines[i],
-        margin: 0,
-        qrOptions: { errorCorrectionLevel: 'H' },
-        dotsOptions: dotsOptions,
-        cornersSquareOptions: { type: cornerType === 'dot' ? 'dot' : cornerType, ...buildEyeOptions(useGradient, color) },
-        cornersDotOptions: { type: cornerType === 'square' ? 'square' : 'dot', ...buildEyeOptions(useGradient, color) },
-        backgroundOptions: { color: bgColor }
-      }).append(offscreen);
-      await new Promise(res => setTimeout(res, 60));
-      const canvas = offscreen.querySelector('canvas');
-      if (canvas) {
-        const dataUrl = canvas.toDataURL('image/png').split(',')[1];
+      try {
+        const canvas = await composeQr(lines[i], design);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         const safeName = `qr-${i + 1}-${lines[i].replace(/[^a-z0-9]/gi, '_').slice(0, 24)}.png`;
-        zip.file(safeName, dataUrl, { base64: true });
+        zip.file(safeName, blob);
+      } catch (err) {
+        failed++;
       }
     }
 
-    document.body.removeChild(offscreen);
-
-    const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.download = 'qr-codes.zip';
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (failed < lines.length) {
+      triggerDownload(await zip.generateAsync({ type: 'blob' }), 'qr-codes.zip');
+    }
+    if (failed > 0) showToast(`${failed} line${failed === 1 ? ' was' : 's were'} too long and skipped`);
 
     batchGenerateBtn.textContent = 'Generate ZIP';
     batchGenerateBtn.disabled = false;
@@ -1144,67 +1403,55 @@
     }
   });
 
-  const templateToggle = document.getElementById('template-toggle');
-  const templatePanel = document.getElementById('template-panel');
-  const templateSelect = document.getElementById('template-select');
-  const templateTitle = document.getElementById('template-title');
-  const templateSubtitle = document.getElementById('template-subtitle');
-  const templateGenerateBtn = document.getElementById('template-generate-btn');
+  const templateToggle = $('template-toggle');
+  const templatePanel = $('template-panel');
 
   templateToggle.addEventListener('click', () => {
-    const isOpen = templatePanel.style.display !== 'none';
-    templatePanel.style.display = isOpen ? 'none' : 'block';
-    templateToggle.textContent = isOpen ? 'Print templates ▾' : 'Print templates ▴';
+    templatePanel.hidden = !templatePanel.hidden;
+    templateToggle.textContent = templatePanel.hidden ? 'Print templates ▾' : 'Print templates ▴';
   });
 
-  function buildTemplateHtml(kind, qrDataUrl, title, subtitle) {
-    const safeTitle = (title || 'Scan the QR code').replace(/</g, '&lt;');
-    const safeSubtitle = (subtitle || '').replace(/</g, '&lt;');
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
+  function buildTemplateHtml(kind, qrDataUrl, title, subtitle) {
+    const safeTitle = escapeHtml(title || 'Scan the QR code');
+    const safeSubtitle = escapeHtml(subtitle || '');
     const sharedStyle = `
       * { box-sizing: border-box; }
-      body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #fff; }
-      .sheet { display: flex; flex-wrap: wrap; gap: 20px; padding: 20px; }
-      .card { border: 1px dashed #999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; page-break-inside: avoid; }
-      .card img { display: block; }
-      .card h2 { margin: 12px 0 4px; }
-      .card p { margin: 0; color: #555; }
-      @media print { .sheet { padding: 0; } .card { border: none; } }
+      body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #fff; color: #1a1a1a; }
+      img { display: block; }
+      h2 { margin: 12px 0 4px; }
+      p { margin: 0; color: #555; }
     `;
 
     if (kind === 'table-tent') {
+      const panel = `<img src="${qrDataUrl}" width="180" height="180"><h2>${safeTitle}</h2>${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}`;
       return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Table tent</title><style>${sharedStyle}
         .tent { width: 400px; margin: 20px auto; }
-        .panel { width: 400px; height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #ccc; }
+        .panel { width: 400px; height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid #ccc; }
         .fold-line { border-top: 2px dashed #999; width: 400px; margin: 0 auto; }
       </style></head><body>
         <div class="tent">
-          <div class="panel">
-            <img src="${qrDataUrl}" width="180" height="180">
-            <h2>${safeTitle}</h2>
-            ${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}
-          </div>
+          <div class="panel">${panel}</div>
           <div class="fold-line"></div>
-          <div class="panel" style="transform: rotate(180deg);">
-            <img src="${qrDataUrl}" width="180" height="180">
-            <h2>${safeTitle}</h2>
-            ${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}
-          </div>
+          <div class="panel" style="transform: rotate(180deg);">${panel}</div>
         </div>
-        <p style="text-align:center; color:#999; font-size:12px;">Print, fold along the dashed line, and stand it up like a tent.</p>
+        <p style="text-align:center; color:#999; font-size:12px; margin-top:8px;">Print, fold along the dashed line, and stand it up like a tent.</p>
       </body></html>`;
     }
 
     if (kind === 'event-badge') {
       return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event badge</title><style>${sharedStyle}
-        .badge { width: 340px; height: 480px; border: 1px solid #ccc; border-radius: 16px; margin: 20px auto; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 24px; }
-        .badge .hole { width: 40px; height: 8px; background: #ddd; border-radius: 4px; }
+        .badge { width: 340px; height: 480px; border: 1px solid #ccc; border-radius: 16px; margin: 20px auto; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; padding: 24px; }
+        .hole { width: 40px; height: 8px; background: #ddd; border-radius: 4px; }
       </style></head><body>
         <div class="badge">
           <div class="hole"></div>
           <h2 style="font-size:22px;">${safeTitle}</h2>
           <img src="${qrDataUrl}" width="200" height="200">
-          ${safeSubtitle ? `<p>${safeSubtitle}</p>` : '<p></p>'}
+          <p>${safeSubtitle}</p>
         </div>
       </body></html>`;
     }
@@ -1214,8 +1461,9 @@
       tabs += `<div style="writing-mode:vertical-rl; border-left:1px dashed #ccc; padding:6px 4px; font-size:11px; color:#555;">${safeTitle}</div>`;
     }
     return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Flyer</title><style>${sharedStyle}
-      .flyer { width: 400px; margin: 20px auto; border: 1px solid #ccc; padding: 20px; text-align:center; }
-      .tabs { display:flex; margin-top: 10px; }
+      .flyer { width: 400px; margin: 20px auto; border: 1px solid #ccc; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+      .flyer img { margin: 12px 0; }
+      .tabs { display: flex; margin-top: 10px; }
     </style></head><body>
       <div class="flyer">
         <h2>${safeTitle}</h2>
@@ -1226,49 +1474,58 @@
     </body></html>`;
   }
 
-  templateGenerateBtn.addEventListener('click', () => {
+  $('template-generate-btn').addEventListener('click', () => {
     const canvas = getCurrentCanvas();
     if (!canvas) { showToast('Generate a QR code first'); return; }
-    const qrDataUrl = canvas.toDataURL('image/png');
-    const html = buildTemplateHtml(templateSelect.value, qrDataUrl, templateTitle.value, templateSubtitle.value);
+    const html = buildTemplateHtml($('template-select').value, canvas.toDataURL('image/png'), $('template-title').value, $('template-subtitle').value);
     const win = window.open('', '_blank');
     if (!win) { showToast('Allow pop-ups to open the printable page'); return; }
     win.document.write(html);
     win.document.close();
   });
 
-  document.getElementById('download-btn').addEventListener('click', downloadQR);
-  document.getElementById('download-svg-btn').addEventListener('click', downloadSVG);
-  document.getElementById('copy-btn').addEventListener('click', copyToClipboard);
-  document.getElementById('save-history-btn').addEventListener('click', () => {
+  function updateGradientLabels() {
+    const radial = gradientTypeSelect.value === 'radial';
+    $('gradient-label-1').textContent = radial ? 'Center color' : 'Gradient start';
+    $('gradient-label-2').textContent = radial ? 'Edge color' : 'Gradient end';
+  }
+
+  $('download-btn').addEventListener('click', downloadQR);
+  $('download-svg-btn').addEventListener('click', downloadSVG);
+  $('copy-btn').addEventListener('click', copyToClipboard);
+  $('save-history-btn').addEventListener('click', () => {
+    if (!getCurrentCanvas()) { showToast('Nothing to save yet'); return; }
     saveToHistory(buildPayload());
     showToast('Saved to recent codes');
   });
 
-  textInput.addEventListener('input', generateQR);
-  sizeSelect.addEventListener('change', generateQR);
-  colorInput.addEventListener('input', generateQR);
-  bgColorInput.addEventListener('input', generateQR);
-  logoBgToggle.addEventListener('change', generateQR);
-  document.getElementById('dot-style-select').addEventListener('change', generateQR);
-  document.getElementById('corner-style-select').addEventListener('change', generateQR);
-  document.getElementById('gradient-color-1').addEventListener('input', generateQR);
-  document.getElementById('gradient-color-2').addEventListener('input', generateQR);
-  document.getElementById('gradient-toggle').addEventListener('change', (e) => {
-    document.getElementById('gradient-colors').style.display = e.target.checked ? 'flex' : 'none';
+  gradientToggle.addEventListener('change', () => {
+    $('gradient-options').hidden = !gradientToggle.checked;
     generateQR();
   });
-  logoRoundToggle.addEventListener('change', generateQR);
-
-  ['wifi-ssid','wifi-password','wifi-encryption','vcard-name','vcard-phone','vcard-email','vcard-org',
-   'email-address','email-subject','email-body','phone-number'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', generateQR);
-    el.addEventListener('change', generateQR);
+  gradientTypeSelect.addEventListener('change', () => {
+    updateGradientLabels();
+    generateQR();
   });
 
+  [textInput, colorInput, bgColorInput, gradientColor1, gradientColor2].forEach(el => el.addEventListener('input', generateQR));
+  [sizeSelect, dotStyleSelect, cornerStyleSelect, logoBgToggle, logoRoundToggle].forEach(el => el.addEventListener('change', generateQR));
+  ['wifi-ssid', 'wifi-password', 'wifi-encryption', 'vcard-name', 'vcard-phone', 'vcard-email', 'vcard-org',
+   'email-address', 'email-subject', 'email-body', 'phone-number'].forEach(id => {
+    $(id).addEventListener('input', generateQR);
+    $(id).addEventListener('change', generateQR);
+  });
+
+  applyTheme(document.documentElement.getAttribute('data-theme'));
+  updateAccountUi();
+  updateGradientLabels();
   renderHistory();
   generateQR();
+  if (session && getLocalLinks().length > 0) {
+    claimLocalLinks().then(moved => {
+      if (moved > 0) showToast(`Moved ${moved} link${moved === 1 ? '' : 's'} from this browser to your account`);
+    });
+  }
 </script>
 
 </body>
