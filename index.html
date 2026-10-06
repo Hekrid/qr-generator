@@ -1065,6 +1065,12 @@
     const labelH = Math.round(S * 0.26);  // height of the label area
     const { color, textColor, text } = frame;
 
+    // No frame: just the blank margin ("quiet zone") scanners need around a code.
+    if (frame.kind === 'none') {
+      const w = card;
+      return { w, h: w, qrX: pad, qrY: pad, back: `<rect width="${w}" height="${w}" fill="${bg}"/>`, front: '' };
+    }
+
     if (frame.kind === 'below' || frame.kind === 'above') {
       const w = card + b * 2;
       const h = b + card + labelH;
@@ -1142,9 +1148,8 @@
   // Draws the frame around an already-finished code canvas (logo, background
   // image and test scan included).
   async function applyFrame(qrCanvas, design) {
-    if (!design.frame) return qrCanvas;
     const S = qrCanvas.width;
-    const layout = frameLayout(design.frame, S, design.bgColor);
+    const layout = frameLayout(design.frame || { kind: 'none' }, S, design.bgColor);
     const canvas = document.createElement('canvas');
     canvas.width = layout.w;
     canvas.height = layout.h;
@@ -1157,10 +1162,9 @@
 
   // Wraps the code's SVG in the frame for the SVG download.
   function applyFrameToSvg(qrSvg, design) {
-    if (!design.frame) return qrSvg;
     const doc = new DOMParser().parseFromString(qrSvg, 'image/svg+xml');
     const root = doc.documentElement;
-    const layout = frameLayout(design.frame, design.size, design.bgColor);
+    const layout = frameLayout(design.frame || { kind: 'none' }, design.size, design.bgColor);
     root.setAttribute('x', String(layout.qrX));
     root.setAttribute('y', String(layout.qrY));
     root.setAttribute('width', String(design.size));
