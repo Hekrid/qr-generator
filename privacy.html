@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy — Free QR code generator</title>
+<meta name="description" content="Exactly what the free QR code generator stores, what it doesn't, and how to delete it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='16' fill='%231a1a1a'/%3E%3Crect x='18' y='18' width='24' height='24' fill='white'/%3E%3Crect x='58' y='18' width='24' height='24' fill='white'/%3E%3Crect x='18' y='58' width='24' height='24' fill='white'/%3E%3Crect x='58' y='58' width='10' height='10' fill='white'/%3E%3Crect x='72' y='58' width='10' height='10' fill='white'/%3E%3Crect x='58' y='72' width='10' height='10' fill='white'/%3E%3Crect x='72' y='72' width='10' height='10' fill='white'/%3E%3C/svg%3E">
+<script>
+  (function () {
+    var theme = null;
+    try { theme = localStorage.getItem('qr_theme'); } catch (e) {}
+    if (theme !== 'light' && theme !== 'dark') {
+      theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f5f5f7;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --text-2: #333333;
+    --muted: #666666;
+    --faint: #8a8a8a;
+    --border-soft: #eeeeee;
+    --soft: #f0f0f0;
+    --good: #1e7d3a;
+    --shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0f1012;
+    --card: #1a1b1e;
+    --text: #f1f1f1;
+    --text-2: #d4d4d4;
+    --muted: #a3a3a3;
+    --faint: #7d7d7d;
+    --border-soft: #2a2b2f;
+    --soft: #2a2b2f;
+    --good: #6fd08c;
+    --shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 16px; background: var(--page); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center;
+  }
+  .card {
+    width: 100%; max-width: 680px; background: var(--card); border-radius: 16px;
+    box-shadow: var(--shadow); padding: 32px 36px;
+  }
+  a { color: inherit; text-underline-offset: 2px; }
+  .back { font-size: 13px; color: var(--muted); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  h1 { font-size: 24px; margin: 14px 0 6px; text-wrap: balance; }
+  .updated { font-size: 13px; color: var(--faint); margin: 0 0 18px; }
+  .lead { font-size: 15.5px; line-height: 1.6; color: var(--text-2); margin: 0 0 8px; }
+  h2 { font-size: 16px; margin: 30px 0 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
+  p, li { font-size: 14.5px; line-height: 1.65; color: var(--text-2); }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin-bottom: 6px; }
+  .never { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+  .never li { background: var(--soft); border-radius: 8px; padding: 9px 12px; margin: 0; font-size: 14px; }
+  .never li::before { content: "✕"; color: var(--good); font-weight: 700; margin-right: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--border-soft); color: var(--text-2); line-height: 1.5; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--faint); font-weight: 600; }
+  td:first-child { font-weight: 600; color: var(--text); width: 34%; }
+  .footer { margin-top: 30px; font-size: 13px; color: var(--faint); }
+  @media (max-width: 480px) {
+    body { padding: 16px 8px; }
+    .card { padding: 22px 16px; border-radius: 12px; }
+    h1 { font-size: 21px; }
+    table, thead, tbody, tr, th, td { display: block; }
+    thead { display: none; }
+    tr { border-bottom: 1px solid var(--border-soft); padding: 8px 0; }
+    td { border: 0; padding: 2px 0; width: auto !important; }
+  }
+</style>
+</head>
+<body>
+<main class="card">
+  <a class="back" href="./">← Back to the QR code generator</a>
+  <h1>Privacy</h1>
+  <p class="updated">Last updated 6 October 2026</p>
+  <p class="lead">This tool has no ads, no analytics and no tracking. Most of it runs entirely in your browser. This page lists exactly what is stored, where, and how to delete it.</p>
+
+  <h2>What never leaves your device</h2>
+  <p>Regular QR codes (links, text, Wi-Fi, contacts, email, phone) are made in your browser. The text you type, the logos and background images you add, and the files you download are never uploaded anywhere.</p>
+  <p>Your browser's own storage on your device holds:</p>
+  <ul>
+    <li>your recent QR codes (the history row), and your light or dark mode choice;</li>
+    <li>if you make dynamic links without an account, the keys that let you edit them;</li>
+    <li>if you sign in, a sign-in token so you stay signed in.</li>
+  </ul>
+  <p>Clearing your browser data removes all of this. We can't see it.</p>
+
+  <h2>What is stored on our server</h2>
+  <p>Only two features use the server: dynamic links and the optional account. Their data is kept in a database hosted by Cloudflare.</p>
+  <table>
+    <thead><tr><th>What</th><th>Details</th></tr></thead>
+    <tbody>
+      <tr><td>Each dynamic link</td><td>Its short code, the destination address you entered, and the date it was made. Plus either your username (if you were signed in) or a random edit key (if you weren't).</td></tr>
+      <tr><td>Each account</td><td>Your username, a salted hash of your password (the password itself is never stored), the list of your link codes, and the date the account was made.</td></tr>
+      <tr><td>Sign-in sessions</td><td>A random token for each device you're signed in on. Deleted when you log out, and expires after 60 days either way.</td></tr>
+      <tr><td>Failed sign-ins</td><td>A count of wrong passwords per username, used to block password guessing. Deleted automatically after 15 minutes, or as soon as you sign in successfully.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What is never collected</h2>
+  <ul class="never">
+    <li>Email addresses</li>
+    <li>Names or phone numbers</li>
+    <li>IP addresses</li>
+    <li>Scan counts or who scanned</li>
+    <li>Location or device data</li>
+    <li>Analytics or tracking cookies</li>
+  </ul>
+  <p>When someone scans a dynamic link, the server looks up the destination and sends them there. Nothing about the scan is recorded.</p>
+  <p>To slow down password guessing and spam, the server briefly counts requests per IP address (for example, at most 10 sign-in attempts per minute). Those counters live only in Cloudflare's memory for about a minute and are never written to our database.</p>
+
+  <h2>Services this site relies on</h2>
+  <p>Like any website, these services receive your IP address when your browser contacts them, and may keep it in their own logs under their own policies:</p>
+  <ul>
+    <li><strong>GitHub Pages</strong> hosts this website. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy statement</a></li>
+    <li><strong>Cloudflare</strong> runs the server for dynamic links and accounts, and delivers one code library (cdnjs). <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare's privacy policy</a></li>
+    <li><strong>unpkg</strong> delivers the QR styling library.</li>
+    <li><strong>Buy Me a Coffee</strong>, only if you click the donate button. <a href="https://buymeacoffee.com/privacy-policy" target="_blank" rel="noopener">Their privacy policy</a></li>
+  </ul>
+
+  <h2>Deleting your data</h2>
+  <ul>
+    <li><strong>One link:</strong> press Delete next to it under "Your dynamic links". It's removed from the server right away and its QR code stops working.</li>
+    <li><strong>Your whole account:</strong> sign in, then choose <em>Delete account</em> next to your username. This immediately deletes your account, all of its links and all of its sign-in sessions. There's no waiting period and no copy is kept.</li>
+    <li><strong>Links made without an account:</strong> delete them from the same browser you made them in, since only that browser holds their edit keys.</li>
+  </ul>
+  <p>Otherwise, data is kept until you delete it, so your dynamic QR codes keep working.</p>
+
+  <h2>Your rights and contact</h2>
+  <p>You can see everything stored about your account in the "Your dynamic links" list, change it there, and delete it at any time as described above. For any other privacy question or request, including rights under the GDPR, <a href="https://github.com/hekrid/qr-generator/issues" target="_blank" rel="noopener">open an issue on GitHub</a>.</p>
+  <p>If this page changes, the date at the top will change too.</p>
+
+  <p class="footer"><a href="./">← Back to the QR code generator</a></p>
+</main>
+</body>
+</html>

@@ -154,6 +154,8 @@
   .file-row input { flex: 1; }
   .file-row button { width: auto; padding: 8px 12px; margin-top: 0; }
   .footer-note { text-align: center; font-size: 12px; color: var(--faint); margin-top: 20px; }
+  .footer-links { margin-top: 6px; }
+  .footer-note a, .small-note a { color: inherit; text-underline-offset: 2px; }
   .field-error { font-size: 12px; color: var(--danger); margin-top: 4px; display: none; }
   .field-error.show { display: block; }
   input.invalid, textarea.invalid { border-color: var(--danger); }
@@ -230,6 +232,13 @@
     display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
     font-size: 13px; color: var(--text-2); background: var(--soft); border-radius: 8px; padding: 9px 12px; margin-bottom: 12px;
   }
+  .account-actions { display: inline-flex; gap: 14px; }
+  .link-btn.muted-link { font-weight: 500; color: var(--muted); }
+  .auth-panel.danger-panel { margin: 0 0 12px; border-color: var(--danger); }
+  .danger-note { color: var(--text-2); }
+  button.danger-btn { background: var(--danger); color: #fff; }
+  button.danger-btn:hover { background: var(--danger); opacity: 0.88; }
+  :root[data-theme="dark"] button.danger-btn { color: #1a0c0a; }
   .auth-panel { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--panel); }
   .auth-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
   .auth-tabs button { flex: 1; margin: 0; padding: 8px; font-size: 13px; background: var(--soft); color: var(--text); }
@@ -352,8 +361,23 @@
   <div class="type-fields" id="fields-dynamic">
     <div class="account-bar" id="account-bar" hidden>
       <span>Signed in as <strong id="account-name"></strong> — your links are saved to your account.</span>
-      <button type="button" class="link-btn" id="logout-btn">Log out</button>
+      <span class="account-actions">
+        <button type="button" class="link-btn" id="logout-btn">Log out</button>
+        <button type="button" class="link-btn muted-link" id="delete-account-open">Delete account</button>
+      </span>
     </div>
+
+    <form class="auth-panel danger-panel" id="delete-account-panel" hidden novalidate>
+      <strong>Delete your account?</strong>
+      <p class="small-note danger-note">This permanently deletes your account and <span id="delete-account-count">all of your dynamic links</span>. Any printed QR code that uses those links will stop working. This can't be undone.</p>
+      <label for="delete-account-password" class="spaced">Enter your password to confirm</label>
+      <input type="password" id="delete-account-password" autocomplete="current-password">
+      <div class="field-error" id="delete-account-error"></div>
+      <div class="btn-row spaced">
+        <button type="button" class="secondary" id="delete-account-cancel">Cancel</button>
+        <button type="submit" class="danger-btn" id="delete-account-submit">Delete account</button>
+      </div>
+    </form>
 
     <label for="dynamic-destination">Destination URL</label>
     <input type="text" id="dynamic-destination" placeholder="https://example.com">
@@ -382,7 +406,7 @@
       </div>
       <div class="field-error" id="auth-error"></div>
       <button type="submit" id="auth-submit-btn" class="spaced">Sign in</button>
-      <p class="small-note">No email or personal details are collected. That also means a forgotten password can't be recovered, so keep it somewhere safe. Links you made in this browser are moved into your account when you sign in.</p>
+      <p class="small-note">No email or personal details are collected. That also means a forgotten password can't be recovered, so keep it somewhere safe. Links you made in this browser are moved into your account when you sign in. <a href="privacy.html">What's stored</a></p>
     </form>
 
     <div class="result-box" id="dynamic-result" hidden></div>
@@ -556,6 +580,7 @@
     <button type="button" class="coffee-btn">☕ Buy me a coffee</button>
   </a>
   <p class="footer-note">Made with no ads. If it's useful, a donation helps keep it that way.</p>
+  <p class="footer-note footer-links"><a href="privacy.html">Privacy</a> · <a href="https://github.com/hekrid/qr-generator" target="_blank" rel="noopener">Source code</a></p>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1234,6 +1259,7 @@
     accountName.textContent = signedIn ? session.username : '';
     dynamicWarning.hidden = signedIn;
     if (signedIn) authPanel.hidden = true;
+    else $('delete-account-panel').hidden = true;
   }
 
   async function api(path, { method = 'GET', body, auth = false } = {}) {
@@ -1328,6 +1354,54 @@
     dynamicResult.hidden = true;
     if (currentType === 'dynamic') setType('dynamic');
     showToast('Logged out');
+  });
+
+  const deleteAccountPanel = $('delete-account-panel');
+  const deleteAccountPassword = $('delete-account-password');
+  const deleteAccountError = $('delete-account-error');
+  const deleteAccountSubmit = $('delete-account-submit');
+
+  function closeDeleteAccount() {
+    deleteAccountPanel.hidden = true;
+    deleteAccountPassword.value = '';
+    deleteAccountError.classList.remove('show');
+  }
+
+  $('delete-account-open').addEventListener('click', () => {
+    const count = dynamicList.querySelectorAll('.link-row').length;
+    $('delete-account-count').textContent = count === 0
+      ? 'all of your dynamic links'
+      : `your ${count} dynamic link${count === 1 ? '' : 's'}`;
+    deleteAccountPanel.hidden = false;
+    deleteAccountPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => deleteAccountPassword.focus({ preventScroll: true }), 250);
+  });
+  $('delete-account-cancel').addEventListener('click', closeDeleteAccount);
+
+  deleteAccountPanel.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!deleteAccountPassword.value) {
+      deleteAccountError.textContent = 'Enter your password.';
+      deleteAccountError.classList.add('show');
+      return;
+    }
+    deleteAccountSubmit.disabled = true;
+    deleteAccountSubmit.textContent = 'Deleting…';
+    try {
+      const data = await api('/api/account/delete', { method: 'POST', body: { password: deleteAccountPassword.value }, auth: true });
+      closeDeleteAccount();
+      setSession(null);
+      currentDynamicUrl = null;
+      dynamicResult.hidden = true;
+      if (currentType === 'dynamic') setType('dynamic');
+      showToast(`Account deleted${data.deletedLinks ? ` along with ${data.deletedLinks} link${data.deletedLinks === 1 ? '' : 's'}` : ''}`);
+    } catch (err) {
+      if (!session) closeDeleteAccount();
+      deleteAccountError.textContent = err.message;
+      deleteAccountError.classList.add('show');
+    }
+    deleteAccountSubmit.disabled = false;
+    deleteAccountSubmit.textContent = 'Delete account';
   });
 
   accountChip.addEventListener('click', () => {
