@@ -595,7 +595,6 @@
     <select id="template-select">
       <option value="table-tent">Table tent (restaurant/cafe)</option>
       <option value="event-badge">Event badge</option>
-      <option value="flyer">Flyer sheet (tear-off tabs)</option>
     </select>
 
     <label for="template-title" class="spaced">Title</label>
@@ -1911,52 +1910,36 @@
     `;
 
     if (kind === 'table-tent') {
-      const panel = `<img src="${qrDataUrl}" width="180" height="180"><h2>${safeTitle}</h2>${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}`;
+      const panel = `<img src="${qrDataUrl}" style="max-width:180px; max-height:190px; width:auto; height:auto;"><h2>${safeTitle}</h2>${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}`;
       return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Table tent</title><style>${sharedStyle}
         .tent { width: 400px; margin: 20px auto; }
         .panel { width: 400px; height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px solid #ccc; }
         .fold-line { border-top: 2px dashed #999; width: 400px; margin: 0 auto; }
       </style></head><body>
         <div class="tent">
-          <div class="panel">${panel}</div>
-          <div class="fold-line"></div>
+          <!-- Standing as a tent, the fold is the top edge of both sides, so each
+               panel reads with its top toward the fold: the upper one upside down. -->
           <div class="panel" style="transform: rotate(180deg);">${panel}</div>
+          <div class="fold-line"></div>
+          <div class="panel">${panel}</div>
         </div>
         <p style="text-align:center; color:#999; font-size:12px; margin-top:8px;">Print, fold along the dashed line, and stand it up like a tent.</p>
       </body></html>`;
     }
 
-    if (kind === 'event-badge') {
-      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event badge</title><style>${sharedStyle}
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Event badge</title><style>${sharedStyle}
         .badge { width: 340px; height: 480px; border: 1px solid #ccc; border-radius: 16px; margin: 20px auto; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center; padding: 24px; }
         .hole { width: 40px; height: 8px; background: #ddd; border-radius: 4px; }
       </style></head><body>
         <div class="badge">
           <div class="hole"></div>
           <h2 style="font-size:22px;">${safeTitle}</h2>
-          <img src="${qrDataUrl}" width="200" height="200">
+          <img src="${qrDataUrl}" style="max-width:200px; max-height:240px; width:auto; height:auto;">
           <p>${safeSubtitle}</p>
         </div>
       </body></html>`;
-    }
-
-    let tabs = '';
-    for (let i = 0; i < 8; i++) {
-      tabs += `<div style="writing-mode:vertical-rl; border-left:1px dashed #ccc; padding:6px 4px; font-size:11px; color:#555;">${safeTitle}</div>`;
-    }
-    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Flyer</title><style>${sharedStyle}
-      .flyer { width: 400px; margin: 20px auto; border: 1px solid #ccc; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-      .flyer img { margin: 12px 0; }
-      .tabs { display: flex; margin-top: 10px; }
-    </style></head><body>
-      <div class="flyer">
-        <h2>${safeTitle}</h2>
-        ${safeSubtitle ? `<p>${safeSubtitle}</p>` : ''}
-        <img src="${qrDataUrl}" width="220" height="220">
-        <div class="tabs">${tabs}</div>
-      </div>
-    </body></html>`;
   }
+
 
   $('template-generate-btn').addEventListener('click', () => {
     if (isPreviewOnly()) {
